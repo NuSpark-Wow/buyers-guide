@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<!-- LearnWow member pass (do not remove): gets the member pass from nusparklearnwow.com and shows the Join screen when a visitor runs out of tries -->
+<script>
+(function () {
+  if (window.__lwgate) return; window.__lwgate = 1;
+  var JOIN = "https://nusparklearnwow.com/join/", LOGIN = "https://nusparklearnwow.com/membership-login/";
+  var LW = { pass: null, vid: "" };
+  try { LW.vid = localStorage.getItem("lw_vid") || ""; if (!LW.vid) { LW.vid = (Date.now().toString(36) + Math.random().toString(36).slice(2, 12)); localStorage.setItem("lw_vid", LW.vid); } }
+  catch (e) { LW.vid = "s" + Math.random().toString(36).slice(2, 12); }
+  var okHost = /(^|\.)(nusparklearnwow|nusparkpublishing|nusparkmarketing)\.com$/;
+  var ready = new Promise(function (done) {
+    if (window.parent === window) return done();
+    var fin = false, end = function () { if (!fin) { fin = true; done(); } };
+    window.addEventListener("message", function (e) {
+      var d = e.data; if (!d || d.type !== "lw-pass") return;
+      try { if (!okHost.test(new URL(e.origin).hostname)) return; } catch (x) { return; }
+      LW.pass = d.pass || null;
+      if (d.vid && /^[a-z0-9]{6,40}$/i.test(d.vid)) LW.vid = "w" + d.vid;
+      end();
+    });
+    try { window.parent.postMessage({ type: "lw-pass-request" }, "*"); } catch (x) {}
+    setTimeout(end, 1500);
+  });
+
+  var lastAct = 0;
+  ["pointerdown", "keydown", "touchstart"].forEach(function (ev) { window.addEventListener(ev, function (e) { if (e.isTrusted) lastAct = Date.now(); }, true); });
+
+  var shown = false;
+  function show(j) {
+    if (shown) return; shown = true;
+    var reason = j && j.lwgate;
+    var title = reason === "budget" ? "You've reached this month's limit" : reason === "preview" ? "This is a members feature" : "You've used your tries";
+    var text = reason === "budget"
+      ? "Your membership has hit its monthly usage limit. It resets at the start of next month. Questions? Contact us at nusparklearnwow.com/support."
+      : "Join LearnWow to unlock all 24+ experiences. 7-day trial, then $29.99/month. Cancel anytime.";
+    var box = document.createElement("div");
+    box.setAttribute("style", "position:fixed;inset:0;z-index:2147483647;background:rgba(10,25,60,.72);display:flex;align-items:center;justify-content:center;padding:20px;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif");
+    var btn = "display:inline-block;margin:6px;padding:14px 28px;border-radius:40px;font-weight:800;font-size:17px;text-decoration:none;";
+    box.innerHTML =
+      '<div style="background:#123166;color:#fff;max-width:440px;width:100%;border-radius:22px;padding:30px 26px;text-align:center;box-shadow:0 20px 50px rgba(0,0,0,.35)">' +
+      '<div style="font-size:40px;line-height:1;color:#F2B33D">&#10022;</div>' +
+      '<div style="font-size:24px;font-weight:800;margin:10px 0 8px">' + title + '</div>' +
+      '<div style="font-size:16px;line-height:1.5;opacity:.92;margin-bottom:18px">' + text + '</div>' +
+      (reason === "budget" ? "" : '<a target="_top" href="' + JOIN + '" style="' + btn + 'background:#F2B33D;color:#123166">Join Now</a>') +
+      '<a target="_top" href="' + LOGIN + '" style="' + btn + 'background:transparent;color:#fff;border:2px solid rgba(255,255,255,.6)">Member Log In</a>' +
+      '<div><button type="button" style="margin-top:10px;background:none;border:0;color:#cfd8ef;font-size:14px;cursor:pointer;text-decoration:underline">Keep looking around</button></div>' +
+      "</div>";
+    box.querySelector("button").onclick = function () { box.remove(); shown = false; };
+    (document.body || document.documentElement).appendChild(box);
+  }
+
+  // Tries left: a small note for visitors ("3 of 8 tries left"), plus a friendly heads-up on the last one.
+  var nudged = false;
+  function tries(left, total) {
+    if (!(left >= 0)) return;
+    var el = document.getElementById("lwTries");
+    if (!el) {
+      el = document.createElement("div"); el.id = "lwTries";
+      el.setAttribute("style", "position:fixed;left:12px;bottom:12px;z-index:2147483646;background:#123166;color:#fff;border:2px solid #F2B33D;border-radius:999px;padding:7px 12px 7px 14px;font:600 13px system-ui,-apple-system,Segoe UI,Roboto,sans-serif;box-shadow:0 6px 18px rgba(0,0,0,.3);display:flex;gap:8px;align-items:center");
+      (document.body || document.documentElement).appendChild(el);
+    }
+    el.innerHTML = '<span>&#10022; ' + left + (total ? ' of ' + total : '') + ' tr' + (left === 1 ? 'y' : 'ies') + ' left</span><a target="_top" href="' + JOIN + '" style="color:#F2B33D;font-weight:800;text-decoration:none">Join</a><button type="button" aria-label="Hide" style="background:none;border:0;color:#cfd8ef;font-size:15px;cursor:pointer;padding:0 0 0 2px">&times;</button>';
+    el.querySelector("button").onclick = function () { el.remove(); };
+    if (left === 1 && !nudged) {
+      nudged = true;
+      var n = document.createElement("div");
+      n.setAttribute("style", "position:fixed;left:12px;bottom:58px;z-index:2147483646;max-width:300px;background:#fff;color:#123166;border-radius:14px;padding:12px 14px;font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;box-shadow:0 10px 26px rgba(0,0,0,.3);border-top:4px solid #F2B33D");
+      n.innerHTML = '<b>One try left!</b><br>Members get every one of the 24+ experiences, with no limits. Start with a 7-day trial and cancel anytime.<div style="margin-top:8px"><a target="_top" href="' + JOIN + '" style="background:#F2B33D;color:#123166;font-weight:800;padding:7px 14px;border-radius:999px;text-decoration:none">See membership</a> <button type="button" style="background:none;border:0;color:#123166;text-decoration:underline;cursor:pointer;font-size:13px">Got it</button></div>';
+      n.querySelector("button").onclick = function () { n.remove(); };
+      (document.body || document.documentElement).appendChild(n);
+      setTimeout(function () { if (n.parentNode) n.remove(); }, 15000);
+    }
+  }
+
+  var of = window.fetch && window.fetch.bind(window);
+  if (!of) return;
+  window.fetch = function (input, init) {
+    var url = typeof input === "string" ? input : (input && input.url) || String(input || "");
+    var u; try { u = new URL(url, location.href); } catch (e) { return of(input, init); }
+    if (u.origin !== location.origin || u.pathname.indexOf("/api/") !== 0) return of(input, init);
+    var act = Date.now() - lastAct < 30000;
+    return ready.then(function () {
+      var o = {}; if (init) for (var k in init) o[k] = init[k];
+      var hd = new Headers(o.headers || (typeof input !== "string" && input && input.headers) || undefined);
+      if (LW.pass) hd.set("x-lw-pass", LW.pass);
+      hd.set("x-lw-vid", LW.vid);
+      if (act) hd.set("x-lw-act", "1");
+      o.headers = hd;
+      return of(input, o);
+    }).then(function (r) {
+      if (r.status === 402) r.clone().json().then(function (j) { if (j && j.lwgate) show(j); }).catch(function () {});
+      try { var tl = r.headers.get("x-lw-left"); if (tl !== null && r.status !== 402) tries(parseInt(tl, 10), parseInt(r.headers.get("x-lw-total") || "0", 10)); } catch (e) {}
+      return r;
+    });
+  };
+})();
+</script>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Buyer's Guide | Learn...Wow! | NuSparkLearnWow</title>
+<meta name="description" content="Know what to look for before you buy or hire anything, for your home or your business. Unbiased: no brands, no sponsors. An advisor panel challenges your choice and Mr. Paul gives the verdict.">
+<meta property="og:title" content="The Buyer's Guide | Wow...Who Knew?">
+<meta property="og:description" content="Unbiased buying education for anything you buy or hire. No brands, no sponsors. From NuSparkLearnWow.com.">
+<meta property="og:type" content="website">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#1c2740; --soft:#5d6677; --navy:#123f2f; --navy-dk:#0a2a1f; --navy-lt:#e7f0eb;
+  --gold:#c87a3e; --gold-dk:#8f5226; --gold-lt:#fbefe4; --green:#2e9a5a; --green-lt:#e3f5e9;
+  --amber:#c98a10; --amber-lt:#fff3d6; --red:#c8432a; --red-lt:#fde7e1; --paper:#fffdf8; --desk:#f2efe6;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{font-family:Nunito,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:var(--ink);background:var(--desk);line-height:1.55}
+button,input,textarea,select{font-family:inherit}
+a{color:var(--navy)}
+[hidden]{display:none !important}
+
+/* header */
+.top{text-align:center;padding:22px 16px 12px}
+.top .kicker{display:inline-block;font-size:12.5px;letter-spacing:2px;text-transform:uppercase;font-weight:900;color:var(--gold-dk);background:var(--gold-lt);border:2px solid var(--gold);border-radius:30px;padding:3px 14px;margin-bottom:8px}
+.top h1{font-family:Oswald,Impact,sans-serif;font-weight:700;font-size:clamp(34px,6.5vw,60px);margin:0;letter-spacing:.5px;line-height:1.05;text-transform:uppercase;color:var(--navy)}
+.top h1 span{color:var(--gold)}
+.top .tagline{margin:8px auto 0;max-width:720px;color:var(--soft);font-size:17px;font-weight:700}
+
+/* banner */
+.banner{display:flex;gap:6px;overflow:hidden;height:150px;background:var(--navy-dk)}
+.banner figure{margin:0;flex:1 1 0;min-width:110px;position:relative;overflow:hidden;background:#1c4a38}
+.banner img{width:100%;height:100%;object-fit:cover;display:block;opacity:0;transition:opacity .6s}
+.banner img.on{opacity:1}
+.banner figcaption{position:absolute;left:0;right:0;bottom:0;padding:4px 8px;font-size:12px;font-weight:800;color:#fff;background:linear-gradient(transparent,rgba(0,0,0,.65))}
+@media(max-width:700px){.banner{height:96px}.banner figure:nth-child(n+5){display:none}}
+
+main{max-width:1100px;margin:0 auto;padding:18px 14px 0}
+
+/* search card */
+.search{background:#fff;border-radius:20px;padding:20px 20px 18px;box-shadow:0 6px 22px rgba(18,63,47,.14);border-top:6px solid var(--gold)}
+.search label.big{display:block;font-family:Oswald,Impact,sans-serif;font-weight:700;font-size:23px;letter-spacing:.3px;color:var(--navy);margin-bottom:8px;text-transform:uppercase}
+.sbar{display:flex;gap:10px}
+.sbar input{flex:1;min-width:0;font-size:18px;padding:13px 16px;border:3px solid #d3dae6;border-radius:14px}
+.sbar input:focus,.lean textarea:focus,.qbox textarea:focus,.detbox textarea:focus{outline:none;border-color:var(--navy)}
+.btn{border:0;background:var(--gold);color:var(--navy-dk);font-weight:900;font-size:17px;padding:12px 22px;border-radius:14px;cursor:pointer;box-shadow:0 4px 0 var(--gold-dk);white-space:nowrap}
+.btn:active{transform:translateY(2px);box-shadow:0 2px 0 var(--gold-dk)}
+.btn.navy{background:var(--navy);color:#fff;box-shadow:0 4px 0 var(--navy-dk)}
+.btn.ghost{background:#fff;color:var(--navy);border:2px solid #cfd8e6;box-shadow:none}
+.btn[disabled]{opacity:.5;pointer-events:none}
+.hint{font-size:14.5px;color:var(--soft);margin:7px 2px 0;font-weight:700}
+@media(max-width:560px){.sbar{flex-direction:column}.btn{width:100%}}
+.toggles{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px}
+@media(max-width:760px){.toggles{grid-template-columns:1fr}}
+.tog b{display:block;font-size:12.5px;letter-spacing:1.4px;text-transform:uppercase;color:var(--soft);margin-bottom:6px}
+.seg{display:flex;gap:8px;flex-wrap:wrap}
+.seg button{flex:1 1 150px;border:3px solid #d3dae6;background:#fff;color:var(--ink);font-weight:900;font-size:16px;padding:10px 12px;border-radius:14px;cursor:pointer;text-align:center}
+.seg button small{display:block;font-weight:700;font-size:12.5px;color:var(--soft)}
+.seg button.on{border-color:var(--navy);background:var(--navy);color:#fff}
+.seg button.on small{color:#cfe3d8}
+.lean{margin-top:14px;background:var(--gold-lt);border:2px solid var(--gold);border-radius:14px;padding:12px 14px}
+.lean label{display:block;font-weight:900;color:var(--navy);margin-bottom:6px}
+.lean textarea,.detbox textarea,.qbox textarea{width:100%;min-height:84px;font-size:16.5px;padding:10px 12px;border:2px solid #d3dae6;border-radius:12px;resize:vertical}
+
+/* the research desk screen */
+.deskwrap{margin:22px 0 0;background:var(--navy);border-radius:22px;padding:12px;box-shadow:0 10px 30px rgba(10,42,31,.32)}
+.paper{background:var(--paper);border-radius:14px;overflow:hidden}
+.bar{display:flex;justify-content:space-between;align-items:center;gap:10px;background:#0c3324;color:#fff;padding:8px 16px;font-weight:800;font-size:14px;letter-spacing:.6px;text-transform:uppercase}
+.bar .dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--gold);margin-right:8px;vertical-align:middle}
+body.working .bar .dot{animation:blink 1s infinite}
+@keyframes blink{50%{opacity:.25}}
+.display{padding:20px 22px 26px;min-height:320px}
+@media(max-width:560px){.display{padding:16px 13px 22px}}
+
+/* controls */
+.ctrl{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.ctrl button{border:0;background:var(--navy-lt);color:var(--ink);font-weight:800;font-size:14px;padding:7px 14px;border-radius:30px;cursor:pointer}
+.ctrl button.stop{background:var(--red-lt);color:#8c2a14}
+.ctrl button.pause.on{background:var(--gold);color:var(--navy-dk)}
+body:not(.working) .ctrl button.stop{opacity:.4;pointer-events:none}
+
+/* home */
+.welcome h2{font-family:Oswald,Impact,sans-serif;font-size:28px;color:var(--navy);margin:0 0 6px;text-transform:uppercase}
+.steps3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:14px 0}
+@media(max-width:760px){.steps3{grid-template-columns:1fr}}
+.steps3 div{background:var(--navy-lt);border-radius:14px;padding:14px}
+.steps3 b{display:flex;align-items:center;gap:8px;color:var(--navy);font-size:17px}
+.steps3 b span{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:50%;background:var(--navy);color:#fff;font-size:15px;flex:none}
+.diff{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+@media(max-width:760px){.diff{grid-template-columns:1fr}}
+.diff div{border:2px solid #e3e8f0;border-radius:14px;padding:10px 14px;font-size:15.5px}
+.diff div b{color:var(--navy)}
+
+/* loading */
+.loading{display:flex;align-items:center;gap:14px;justify-content:center;padding:50px 10px;font-weight:800;font-size:18px;color:var(--navy);text-align:center}
+.loading .mag{font-size:34px;animation:scan 1.4s ease-in-out infinite}
+@keyframes scan{0%,100%{transform:translateX(-8px) rotate(-10deg)}50%{transform:translateX(8px) rotate(10deg)}}
+.err{background:var(--red-lt);border:2px solid #f2b8aa;border-radius:14px;padding:14px;font-weight:700}
+
+/* clarify */
+.h2{font-family:Oswald,Impact,sans-serif;font-weight:700;font-size:26px;color:var(--navy);margin:2px 0 4px;text-transform:uppercase;line-height:1.15}
+.sub{color:var(--soft);font-weight:700;margin:0 0 10px}
+.badges{display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 12px}
+.badge{font-size:12.5px;font-weight:900;letter-spacing:1px;text-transform:uppercase;border-radius:30px;padding:3px 11px;background:var(--navy-lt);color:var(--navy)}
+.badge.gold{background:var(--gold-lt);color:var(--gold-dk);border:1px solid var(--gold)}
+.panelrow{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin:8px 0 16px}
+.pcard{display:flex;gap:10px;align-items:flex-start;background:#fff;border:2px solid #e3e8f0;border-radius:14px;padding:10px 12px}
+.pcard .ic{font-size:26px;line-height:1;flex:none;width:44px;height:44px;border-radius:50%;background:var(--navy-lt);display:flex;align-items:center;justify-content:center}
+.pcard b{display:block;color:var(--navy);font-size:15.5px}
+.pcard small{display:block;color:var(--soft);font-size:13.5px;line-height:1.35}
+.cq{background:#fff;border:2px solid #e3e8f0;border-radius:14px;padding:12px 14px;margin:10px 0}
+.cq p{margin:0 0 8px;font-weight:900}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chips button{border:2px solid #d3dae6;background:#fff;color:var(--ink);font-weight:800;font-size:15px;padding:7px 13px;border-radius:30px;cursor:pointer}
+.chips button.on{border-color:var(--navy);background:var(--navy);color:#fff}
+.chips button.skip{border-style:dashed;color:var(--soft)}
+.chips button.skip.on{background:#6b7486;border-color:#6b7486;color:#fff}
+.detbox{margin:12px 0}
+.detbox label{display:block;font-weight:900;margin-bottom:6px}
+.row{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+
+/* report */
+.rhead{display:flex;gap:18px;align-items:flex-start}
+.rhead .txt{flex:1;min-width:0}
+.photo{margin:0 0 6px;width:240px;flex:none}
+.photo img{width:100%;border-radius:12px;display:block;max-height:200px;object-fit:cover}
+.photo figcaption{font-size:11.5px;color:var(--soft);margin-top:3px}
+@media(max-width:700px){.rhead{flex-direction:column}.photo{width:100%}}
+.nav{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0 4px;position:sticky;top:0;background:var(--paper);padding:8px 0;z-index:5;border-bottom:2px solid #eef1f6}
+.nav button{border:0;background:var(--navy-lt);color:var(--navy);font-weight:800;font-size:13px;padding:5px 11px;border-radius:30px;cursor:pointer}
+.nav button:hover{background:var(--navy);color:#fff}
+.sec{margin:24px 0 0;scroll-margin-top:60px}
+.sec>h3{display:flex;align-items:center;gap:10px;font-family:Oswald,Impact,sans-serif;font-weight:700;font-size:22px;letter-spacing:.3px;color:var(--navy);margin:0 0 10px;text-transform:uppercase;border-bottom:3px solid var(--gold);padding-bottom:4px}
+.quick{background:var(--navy);color:#fff;border-radius:16px;padding:16px 18px;font-size:17.5px;font-weight:600}
+.quick b{display:block;color:var(--gold);font-size:13px;letter-spacing:1.6px;text-transform:uppercase;margin-bottom:4px}
+.card{background:#fff;border:2px solid #e3e8f0;border-radius:14px;padding:12px 14px;margin:8px 0}
+ul.clean{margin:0;padding-left:20px}
+ul.clean li{margin:5px 0}
+.cols2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.cols3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+@media(max-width:760px){.cols2,.cols3{grid-template-columns:1fr}}
+
+/* chart: what matters most */
+.bars{display:grid;gap:10px}
+.barrow .lab{display:flex;justify-content:space-between;font-weight:900;font-size:15.5px}
+.barrow .lab span{color:var(--soft);font-weight:800;font-size:13.5px}
+.track{height:16px;background:#eef1f6;border-radius:10px;overflow:hidden;margin:4px 0}
+.fill{height:100%;border-radius:10px;background:var(--navy);width:0;transition:width 1s ease}
+.fill.w2{background:#4f8a6f}.fill.w3{background:#a3c7b4}
+.barrow p{margin:0;font-size:14.5px;color:var(--soft)}
+
+/* comparison table */
+.tblwrap{overflow-x:auto;border:2px solid #e3e8f0;border-radius:14px}
+table.cmp{border-collapse:collapse;width:100%;min-width:620px;font-size:15px;background:#fff}
+table.cmp th{background:var(--navy);color:#fff;text-align:left;padding:9px 10px;font-size:13px;letter-spacing:1px;text-transform:uppercase}
+table.cmp td{padding:9px 10px;border-top:1px solid #e9edf3;vertical-align:top}
+table.cmp td:first-child{font-weight:900;color:var(--navy)}
+table.cmp td.cost{font-weight:900;color:var(--green);white-space:nowrap}
+table.cmp tr:nth-child(even) td{background:#f8fafd}
+
+/* hype vs reality */
+.hype{display:grid;grid-template-columns:1fr 1fr;gap:0;border:2px solid #e3e8f0;border-radius:14px;overflow:hidden;margin:8px 0}
+.hype div{padding:10px 14px}
+.hype .c{background:var(--red-lt)}
+.hype .r{background:var(--green-lt)}
+.hype small{display:block;font-size:11.5px;font-weight:900;letter-spacing:1.3px;text-transform:uppercase;margin-bottom:2px}
+.hype .c small{color:var(--red)} .hype .r small{color:var(--green)}
+@media(max-width:560px){.hype{grid-template-columns:1fr}}
+
+/* price ladder */
+.ladder{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;align-items:end}
+.rung{background:#fff;border:2px solid #e3e8f0;border-radius:14px;padding:12px;border-bottom:8px solid var(--green)}
+.rung:nth-child(2){border-bottom-color:var(--amber)} .rung:nth-child(3){border-bottom-color:#2c5f8a} .rung:nth-child(4){border-bottom-color:#6a4fb3}
+.rung b{display:block;font-size:13px;letter-spacing:1.2px;text-transform:uppercase;color:var(--soft)}
+.rung .amt{font-family:Oswald,Impact,sans-serif;font-size:22px;color:var(--navy);margin:2px 0}
+.rung p{margin:0;font-size:14.5px}
+.note{font-size:13.5px;color:var(--soft);margin:8px 0 0;font-style:italic}
+.money h4{margin:0 0 6px;font-size:15px;color:var(--navy)}
+.life{margin-top:12px;background:var(--navy-lt);border-radius:14px;padding:12px 14px}
+.life .line{position:relative;height:12px;border-radius:8px;background:linear-gradient(90deg,var(--green),var(--amber),var(--red));margin:8px 0}
+
+/* flowchart */
+.flow{display:flex;flex-direction:column;align-items:stretch;max-width:760px}
+.fnode{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:stretch}
+.fq{background:var(--navy);color:#fff;border-radius:14px;padding:10px 14px;font-weight:800;display:flex;gap:10px;align-items:center}
+.fq span{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:var(--gold);color:var(--navy-dk);font-weight:900;flex:none}
+.fno{border:2px dashed #e0a596;background:var(--red-lt);border-radius:14px;padding:10px 14px;font-size:14.5px}
+.fno b{color:var(--red)}
+.farrow{text-align:left;padding-left:26px;color:var(--green);font-weight:900;font-size:14px;line-height:1.2;margin:4px 0}
+.fend{background:var(--green);color:#fff;border-radius:14px;padding:10px 14px;font-weight:900;max-width:calc(50% - 5px)}
+@media(max-width:600px){.fnode{grid-template-columns:1fr}.fend{max-width:none}}
+
+/* your choice */
+.yc{border:3px solid var(--gold);background:var(--gold-lt);border-radius:16px;padding:14px 16px}
+.yc h4{margin:10px 0 4px;color:var(--navy)}
+.ifthen{display:grid;grid-template-columns:1fr 1.4fr;border:2px solid #e3e8f0;border-radius:12px;overflow:hidden;margin:6px 0}
+.ifthen div{padding:9px 12px}.ifthen div:first-child{background:var(--navy-lt);font-weight:800}
+@media(max-width:560px){.ifthen{grid-template-columns:1fr}}
+
+/* search smarter */
+.sq{background:#fff;border:2px solid #e3e8f0;border-radius:14px;padding:12px 14px;margin:8px 0}
+.sq code{display:block;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:15px;background:#f3f5f9;border:1px solid #dfe5ee;border-radius:10px;padding:9px 12px;word-break:break-word;color:var(--navy-dk)}
+.sq p{margin:8px 0;font-size:15px}
+.sq .sb{display:flex;gap:8px;flex-wrap:wrap}
+.mini{border:0;background:var(--navy-lt);color:var(--navy);font-weight:800;font-size:14px;padding:7px 13px;border-radius:30px;cursor:pointer;text-decoration:none;display:inline-block}
+.mini.gold{background:var(--gold);color:var(--navy-dk)}
+.cheat{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px;margin-top:8px}
+.cheat div{background:var(--navy-lt);border-radius:12px;padding:8px 12px;font-size:14px}
+.cheat code{font-weight:900;color:var(--navy-dk)}
+
+/* the panel */
+.panelzone{margin-top:30px;background:var(--navy-lt);border-radius:18px;padding:16px}
+.panelzone>h3{font-family:Oswald,Impact,sans-serif;font-size:24px;color:var(--navy);margin:0 0 4px;text-transform:uppercase}
+.adv{background:#fff;border-radius:14px;padding:12px 14px;margin:10px 0;border-left:6px solid var(--navy)}
+.adv.s-2,.adv.s-1{border-left-color:var(--red)} .adv.s0{border-left-color:var(--amber)} .adv.s1,.adv.s2{border-left-color:var(--green)}
+.adv .who{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.adv .who .ic{font-size:24px;width:42px;height:42px;border-radius:50%;background:var(--navy-lt);display:flex;align-items:center;justify-content:center;flex:none}
+.adv .who b{display:block;color:var(--navy)}
+.adv .who .pill{margin-left:auto;font-size:12px;font-weight:900;letter-spacing:1px;text-transform:uppercase;border-radius:30px;padding:3px 10px;white-space:nowrap}
+.pill.p-2,.pill.p-1{background:var(--red-lt);color:var(--red)} .pill.p0{background:var(--amber-lt);color:var(--amber)} .pill.p1,.pill.p2{background:var(--green-lt);color:var(--green)}
+.adv .hl{font-weight:900;font-size:16.5px;margin:0 0 4px}
+.adv .askq{margin-top:8px;font-style:italic;font-weight:800;color:#8f5226}
+.scale{background:#fff;border-radius:14px;padding:14px 16px 10px;margin:12px 0}
+.scale .axis{position:relative;height:96px;margin:6px 34px 0}
+.scale .axis::before{content:"";position:absolute;left:0;right:0;top:26px;height:6px;border-radius:4px;background:linear-gradient(90deg,var(--red),var(--amber),var(--green))}
+.scale .tick{position:absolute;top:0;transform:translateX(-50%);font-size:24px;line-height:1;text-align:center;transition:left .8s ease}
+.scale .tick small{display:block;font-size:10.5px;font-weight:800;color:var(--soft);max-width:90px;line-height:1.1;margin-top:4px}
+.scale .tick small:first-of-type{margin-top:20px}
+.scale .ends{display:flex;justify-content:space-between;font-size:12.5px;font-weight:900;letter-spacing:1px;text-transform:uppercase;margin-top:4px}
+.scale .ends span:first-child{color:var(--red)} .scale .ends span:last-child{color:var(--green)}
+.verdict{display:flex;gap:18px;align-items:center;background:#fff;border-radius:16px;padding:16px;margin-top:14px;border:3px solid var(--navy)}
+.seal{flex:none;width:130px;height:130px;border-radius:50%;display:flex;align-items:center;justify-content:center;text-align:center;font-family:Oswald,Impact,sans-serif;font-weight:700;font-size:17px;line-height:1.1;text-transform:uppercase;color:#fff;transform:rotate(-8deg);box-shadow:0 0 0 5px #fff,0 0 0 8px currentColor;padding:12px}
+.seal.v-confirmed{background:var(--green);color:var(--green)} .seal.v-conditions{background:var(--amber);color:var(--amber)} .seal.v-stepback{background:var(--red);color:var(--red)}
+.seal span{color:#fff}
+.verdict .vt{flex:1;min-width:0}
+.verdict .vt h4{font-family:Oswald,Impact,sans-serif;font-size:22px;margin:0 0 6px;color:var(--navy);text-transform:uppercase}
+.verdict .fw{background:var(--gold-lt);border-radius:12px;padding:10px 12px;margin-top:10px;font-weight:700}
+@media(max-width:600px){.verdict{flex-direction:column;text-align:left}.seal{width:110px;height:110px;font-size:15px}}
+.scale .legend{display:none;margin-top:8px;font-size:14px}
+.scale .legend div{padding:3px 0}
+.legend .p-2,.legend .p-1{color:var(--red)} .legend .p0{color:var(--amber)} .legend .p1,.legend .p2{color:var(--green)}
+@media(max-width:600px){
+  .scale .axis{height:44px;margin:6px 16px 0}.scale .tick small{display:none}.scale .legend{display:block}
+  .adv .who{flex-wrap:wrap}.adv .who .pill{margin-left:0}
+  .nav{position:static}
+  .deskwrap{padding:6px;border-radius:16px}
+}
+.paused{background:var(--gold-lt);border:2px dashed var(--gold);border-radius:14px;padding:14px;font-weight:800;text-align:center}
+
+/* follow-ups */
+.askbar{margin-top:26px;border-top:2px dashed #dfe5ee;padding-top:12px}
+.askbar h3{font-family:Oswald,Impact,sans-serif;font-size:22px;color:var(--navy);margin:0 0 6px;text-transform:uppercase}
+.qbox{background:#f6f8fb;border:2px solid #e3e8f0;border-radius:14px;padding:12px}
+.qbox select{font-size:15.5px;padding:8px 10px;border:2px solid #d3dae6;border-radius:10px;margin-bottom:8px;max-width:100%}
+.say{display:flex;gap:10px;align-items:flex-start;margin:12px 0}
+.say .ic{font-size:22px;width:40px;height:40px;border-radius:50%;background:var(--navy-lt);display:flex;align-items:center;justify-content:center;flex:none}
+.say .bub{background:#fff;border:2px solid #e3e8f0;border-radius:14px;padding:10px 14px;flex:1;min-width:0;word-wrap:break-word}
+.say .bub b{display:block;font-size:13.5px;color:var(--navy);margin-bottom:2px}
+.say.me{flex-direction:row-reverse}
+.say.me .bub{background:var(--navy-lt);border-color:#c6dccf}
+.say .bub .cl{margin-top:8px;font-style:italic;color:#8f5226;font-weight:800}
+
+/* footnotes */
+.fn{border-top:2px solid #e8edf3;margin-top:22px;padding-top:10px;font-size:14px}
+.fn b{display:block;font-size:12.5px;letter-spacing:1.2px;text-transform:uppercase;color:var(--soft);margin-bottom:4px}
+.fn ol{margin:0;padding-left:20px}
+.fn li{margin:2px 0;word-break:break-word}
+.ainote{font-size:13.5px;color:var(--soft);margin-top:10px}
+.advice{background:var(--amber-lt);border:2px solid #f0cf86;border-radius:12px;padding:10px 12px;font-weight:700;font-size:14.5px;margin-top:12px}
+.toolsrow{display:flex;gap:8px;flex-wrap:wrap;margin-top:18px}
+
+/* Mr. Paul host */
+.mphost{display:flex;align-items:center;gap:14px;max-width:1100px;margin:22px auto 4px;padding:0 14px}
+.mphost .mpfig{width:96px;flex:none;filter:drop-shadow(0 4px 8px rgba(0,0,0,.3))}
+.mphost .mpfig svg{width:100%;height:auto;display:block}
+.mphost .mpbub{position:relative;background:#fff;color:var(--ink);border:2px solid var(--gold);border-radius:16px;padding:10px 16px;font-weight:700;font-size:16px;line-height:1.35;max-width:420px}
+.mphost .mpbub::before{content:"";position:absolute;left:-11px;top:50%;margin-top:-9px;border:9px solid transparent;border-right-color:var(--gold);border-left:0}
+.mphost .mpbub::after{content:"";position:absolute;left:-7px;top:50%;margin-top:-7px;border:7px solid transparent;border-right-color:#fff;border-left:0}
+@media(max-width:560px){.mphost .mpfig{width:74px}.mphost .mpbub{font-size:15px}}
+
+footer{max-width:1100px;margin:10px auto 30px;padding:14px;font-size:13.5px;color:var(--soft);border-top:2px solid #e2e6ee}
+footer p{margin:6px 0}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--navy-dk);color:#fff;font-weight:800;padding:10px 18px;border-radius:30px;z-index:99;box-shadow:0 8px 20px rgba(0,0,0,.3)}
+
+@media print{
+  .top,.banner,.search,.mphost,footer,.ctrl,.nav,.askbar .qbox,.noprint,.toolsrow{display:none !important}
+  body{background:#fff}.deskwrap{background:none;box-shadow:none;padding:0}.bar{display:none}.display{padding:0}
+  .sec,.adv,.card,.verdict{break-inside:avoid}
+  .fill{transition:none}
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="kicker">Unbiased · No brands · No sponsors</div>
+  <h1>The Buyer's <span>Guide</span></h1>
+  <p class="tagline">Know what to look for before you buy or hire anything, for your home or your business. Wow...Who Knew?</p>
+</header>
+
+<div class="banner" id="banner" aria-hidden="true"></div>
+
+<main>
+  <section class="search" aria-label="Start a guide">
+    <label class="big" for="mainQ">What are you thinking of buying or hiring?</label>
+    <div class="sbar">
+      <input type="text" id="mainQ" maxlength="300" autocomplete="off">
+      <button class="btn" type="button" id="mainGo">Build My Guide</button>
+    </div>
+    <p class="hint">Anything at all: a product, software, a system, or a service.</p>
+    <div class="toggles">
+      <div class="tog"><b>It's for</b>
+        <div class="seg" id="sideSeg">
+          <button type="button" data-v="home" class="on">🏠 For Home<small>You or your household</small></button>
+          <button type="button" data-v="business">💼 For Business<small>Your company or team</small></button>
+        </div>
+      </div>
+      <div class="tog"><b>Where are you?</b>
+        <div class="seg" id="stageSeg">
+          <button type="button" data-v="learn" class="on">📚 I'm Learning<small>Teach me what to look for</small></button>
+          <button type="button" data-v="decided">✅ I've Decided<small>Or I'm close. Check my choice.</small></button>
+        </div>
+      </div>
+    </div>
+    <div class="lean" id="leanBox" hidden>
+      <label for="leanQ">What are you leaning toward, and why?</label>
+      <textarea id="leanQ" maxlength="900"></textarea>
+      <p class="hint">Describe the type or option you picked and your reasons. Your reasons are what the panel will check.</p>
+    </div>
+  </section>
+
+  <div class="deskwrap">
+    <div class="paper">
+      <div class="bar"><span><span class="dot"></span><span id="barLeft">The Research Desk</span></span><span id="barRight">Ready</span></div>
+      <div class="display" id="display" aria-live="polite"></div>
+    </div>
+  </div>
+</main>
+
+<!-- Mr. Paul, your Buyer's Guide host (cartoon drawn in code) -->
+<div class="mphost" role="note" aria-label="Mr. Paul, your host"><div class="mpfig"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 -12 320 392" class="mph-svg" aria-hidden="true"><defs><linearGradient id="bg-skin" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f6d2bb"></stop><stop offset="1" stop-color="#eebc9f"></stop></linearGradient><linearGradient id="bg-coat" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2f6b52"></stop><stop offset="1" stop-color="#1f5040"></stop></linearGradient><linearGradient id="bg-lens" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#d8dde0" stop-opacity=".45"></stop><stop offset="1" stop-color="#aeb6bc" stop-opacity=".3"></stop></linearGradient><linearGradient id="bg-glens" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#e6f6ff"></stop><stop offset=".6" stop-color="#a9d8f2"></stop><stop offset="1" stop-color="#7fbfe3"></stop></linearGradient></defs><path d="M40 380 C44 318 78 290 122 282 L160 300 L198 282 C242 290 276 318 280 380 Z" fill="url(#bg-coat)" stroke="#123f2f" stroke-width="3"></path><path d="M160 302 L204 288 C212 324 212 356 210 380 L150 380 Z" fill="#2a5f49" stroke="#123f2f" stroke-width="2.5"></path><g fill="#e8eef5"><circle cx="172" cy="322" r="4.5"></circle><circle cx="196" cy="322" r="4.5"></circle><circle cx="172" cy="350" r="4.5"></circle><circle cx="196" cy="350" r="4.5"></circle></g><rect x="70" y="330" width="56" height="22" rx="4" fill="#c99a2e"></rect><text x="98" y="345.5" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" font-weight="700" fill="#1f2a44">Mr. Paul</text><path d="M126 282 Q160 304 194 282 L190 298 Q160 318 130 298 Z" fill="#1d4a3a" stroke="#123f2f" stroke-width="2"></path><path d="M152 304 L168 304 L174 326 L160 318 L146 326 Z" fill="#1d4a3a" stroke="#123f2f" stroke-width="2"></path><!-- neck --><path d="M134 240 L136 290 Q160 304 184 290 L186 240 Z" fill="#e8b294"></path><!-- side hair (behind head), soft and fluffy --><g fill="#dedad2"><ellipse cx="82" cy="130" rx="14" ry="22"></ellipse><ellipse cx="78" cy="152" rx="18" ry="30"></ellipse><ellipse cx="76" cy="182" rx="14" ry="24"></ellipse><ellipse cx="88" cy="206" rx="12" ry="16"></ellipse><ellipse cx="238" cy="130" rx="14" ry="22"></ellipse><ellipse cx="242" cy="152" rx="18" ry="30"></ellipse><ellipse cx="244" cy="182" rx="14" ry="24"></ellipse><ellipse cx="232" cy="206" rx="12" ry="16"></ellipse></g><g stroke="#c2bdb3" stroke-width="1.8" fill="none" stroke-linecap="round"><path d="M70 132 C64 150 64 170 70 190"></path><path d="M78 140 C74 160 74 184 82 206"></path><path d="M66 124 C62 118 60 112 61 106"></path><path d="M250 132 C256 150 256 170 250 190"></path><path d="M242 140 C246 160 246 184 238 206"></path><path d="M254 124 C258 118 260 112 259 106"></path></g><!-- ears --><ellipse cx="82" cy="168" rx="13" ry="20" fill="#eab597"></ellipse><ellipse cx="238" cy="168" rx="13" ry="20" fill="#eab597"></ellipse><path d="M84 158 Q78 168 85 178" stroke="#cf957a" stroke-width="2.5" fill="none" stroke-linecap="round"></path><path d="M236 158 Q242 168 235 178" stroke="#cf957a" stroke-width="2.5" fill="none" stroke-linecap="round"></path><!-- head --><path d="M160 42 C216 42 240 86 240 142 C240 210 214 254 160 254 C106 254 80 210 80 142 C80 86 104 42 160 42 Z" fill="url(#bg-skin)"></path><!-- thinning hair on top --><path d="M90 118 C88 74 116 46 160 44 C204 46 232 74 230 118 C222 96 206 82 186 80 C176 70 146 70 134 80 C114 82 98 96 90 118 Z" fill="#d6d1c8"></path><g stroke="#b3ada2" stroke-width="2" fill="none" stroke-linecap="round"><path d="M110 84 C122 62 140 52 160 50"></path><path d="M122 78 C134 62 150 56 166 56"></path><path d="M210 84 C198 62 180 52 160 50"></path><path d="M198 78 C186 62 170 56 154 58"></path><path d="M96 106 C100 90 108 80 120 72"></path><path d="M224 106 C220 90 212 80 200 72"></path><path d="M146 72 C150 64 158 60 166 62"></path><path d="M160 70 C164 62 172 58 180 60"></path></g><ellipse cx="160" cy="58" rx="22" ry="7" fill="#fff" opacity=".22"></ellipse><g><path d="M108 136 Q126 126 146 132" stroke="#8c847a" stroke-width="5" fill="none" stroke-linecap="round"></path><path d="M174 132 Q194 126 212 136" stroke="#8c847a" stroke-width="5" fill="none" stroke-linecap="round"></path></g><!-- eyes --><ellipse cx="128" cy="158" rx="10" ry="7.5" fill="#fff"></ellipse><ellipse cx="192" cy="158" rx="10" ry="7.5" fill="#fff"></ellipse><circle cx="129" cy="158" r="5.5" fill="#7d9277"></circle><circle cx="193" cy="158" r="5.5" fill="#7d9277"></circle><circle cx="129" cy="158" r="2.6" fill="#22262b"></circle><circle cx="193" cy="158" r="2.6" fill="#22262b"></circle><circle cx="131" cy="156" r="1.4" fill="#fff"></circle><circle cx="195" cy="156" r="1.4" fill="#fff"></circle><!-- smile crinkles --><path d="M112 164 Q118 170 126 168" stroke="#d29c80" stroke-width="2" fill="none" stroke-linecap="round"></path><path d="M208 164 Q202 170 194 168" stroke="#d29c80" stroke-width="2" fill="none" stroke-linecap="round"></path><!-- glasses: dark grey translucent rectangular frames --><rect x="100" y="138" width="56" height="40" rx="8" fill="url(#bg-lens)" stroke="#555b63" stroke-width="6"></rect><rect x="164" y="138" width="56" height="40" rx="8" fill="url(#bg-lens)" stroke="#555b63" stroke-width="6"></rect><path d="M156 152 Q160 148 164 152" stroke="#555b63" stroke-width="5" fill="none"></path><path d="M100 148 L84 146" stroke="#555b63" stroke-width="5" stroke-linecap="round"></path><path d="M220 148 L236 146" stroke="#555b63" stroke-width="5" stroke-linecap="round"></path><circle cx="104" cy="142" r="2" fill="#9aa1a9"></circle><circle cx="216" cy="142" r="2" fill="#9aa1a9"></circle><!-- nose --><path d="M160 168 C156 186 150 196 152 202 C156 208 166 208 170 202" stroke="#cf957a" stroke-width="3.5" fill="none" stroke-linecap="round"></path><!-- rosy cheeks --><ellipse cx="114" cy="200" rx="15" ry="9" fill="#f29a8a" opacity=".45"></ellipse><ellipse cx="206" cy="200" rx="15" ry="9" fill="#f29a8a" opacity=".45"></ellipse><!-- light stubble around mouth and chin --><path d="M122 212 C128 244 192 244 198 212 C198 234 184 252 160 252 C136 252 122 234 122 212 Z" fill="#c9b6a6" opacity=".22"></path><g><path d="M136 220 Q160 236 184 220" stroke="#b5635a" stroke-width="4.5" fill="none" stroke-linecap="round"></path><path d="M132 218 Q134 222 137 221" stroke="#b5635a" stroke-width="3" fill="none" stroke-linecap="round"></path><path d="M188 218 Q186 222 183 221" stroke="#b5635a" stroke-width="3" fill="none" stroke-linecap="round"></path></g><!-- clipboard with checklist --><g transform="rotate(10 238 330)"><rect x="212" y="292" width="52" height="70" rx="6" fill="#b9874a" stroke="#6e4c22" stroke-width="2.5"></rect><rect x="219" y="303" width="38" height="52" rx="2" fill="#fff"></rect><rect x="228" y="286" width="20" height="13" rx="3" fill="#9aa3ad" stroke="#5b636c" stroke-width="2"></rect><g stroke="#2f8a55" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M223 314 l3 3 l5 -6"></path><path d="M223 328 l3 3 l5 -6"></path></g><g stroke="#123f2f" stroke-width="2.5" stroke-linecap="round"><line x1="235" y1="314" x2="252" y2="314"></line><line x1="235" y1="328" x2="252" y2="328"></line><line x1="223" y1="342" x2="252" y2="342"></line></g></g></svg></div><div class="mpbub" aria-live="polite">Welcome to the Research Desk! What are you thinking of buying or hiring?</div></div>
+
+<footer>
+  <p>The Buyer's Guide never recommends, ranks or endorses brands, companies, sellers or providers, and nobody pays to be in it. It teaches you how to judge them yourself.</p>
+  <p>Guides are researched live with AI and checked against independent sources. AI can still make mistakes, and prices and rules change, so double-check anything important before you buy or sign.</p>
+  <p>This is education, not legal, financial or medical advice. The advisors are AI characters, not real people. Photos from Wikipedia / Wikimedia Commons, credited on each photo.</p>
+  <p>The Buyer's Guide is part of <a href="https://nusparklearnwow.com" target="_blank" rel="noopener">NuSparkLearnWow.com</a> from NuSpark Publishing.</p>
+</footer>
+
+<script>
+const BANNER = ["Television", "Sofa bed", "Dishwasher", "Laptop", "Mattress", "Refrigerator", "Roof shingle", "Washing machine", "Office chair", "Car dealership", "Shopping cart", "Handshake", "Calculator", "Smartphone"];
+const BAR_RIGHT = { home: "Ready", triage: "Setting Up", clarify: "A Few Questions", work: "Researching", report: "Your Guide" };
+const VERDICT = {
+  learn:   { confirmed: "Ready to Shop", conditions: "Shop With These Checks", stepback: "Slow Down First" },
+  decided: { confirmed: "Confirmed", conditions: "Confirmed With Conditions", stepback: "Step Back" }
+};
+const STANCE = { "-2": "Step back", "-1": "Cautious", "0": "Mixed", "1": "Leans yes", "2": "Go ahead" };
+
+/* ---------- helpers ---------- */
+const $ = s => document.querySelector(s);
+function el(tag, attrs, ...kids){
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (k === "text") e.textContent = v;
+    else if (k.startsWith("on")) e.addEventListener(k.slice(2), v);
+    else if (v !== false && v != null) e.setAttribute(k, v);
+  }
+  for (const k of kids.flat()) if (k != null && k !== false && k !== "") e.append(k.nodeType ? k : document.createTextNode(k));
+  return e;
+}
+const shuffle = a => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const cleanAI = v => typeof v === "string" ? v.replace(/<\/?cite\b[^>]*>/gi, "").replace(/\*\*/g, "").replace(/[ \t]{2,}/g, " ").trim()
+  : Array.isArray(v) ? v.map(cleanAI) : (v && typeof v === "object") ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, cleanAI(x)])) : v;
+function toast(msg){ const t = el("div", { class: "toast", text: msg }); document.body.append(t); setTimeout(() => t.remove(), 2200); }
+async function copyText(text){
+  try { await navigator.clipboard.writeText(text); toast("Copied!"); }
+  catch(e){ const ta = el("textarea", {}); ta.value = text; document.body.append(ta); ta.select(); try { document.execCommand("copy"); toast("Copied!"); } catch(x){} ta.remove(); }
+}
+
+/* every AI call goes through here, so Stop can cancel them all */
+const inflight = new Set();
+function setWorking(){ document.body.classList.toggle("working", inflight.size > 0); }
+async function api(body){
+  const ctl = new AbortController();
+  inflight.add(ctl); setWorking();
+  try {
+    const r = await fetch("/api/guide", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body), signal: ctl.signal });
+    let j = {}; try { j = await r.json(); } catch(e){}
+    if (r.status === 402) throw new Error("Join LearnWow to keep using The Buyer's Guide.");
+    if (!r.ok) throw new Error(j.message || j.error || "Something went wrong. Please try again.");
+    return cleanAI(j);
+  } catch(e) {
+    if (e && e.name === "AbortError") throw new Error("Stopped. Tap 🔄 Restart to run it again.");
+    throw e;
+  } finally { inflight.delete(ctl); setWorking(); }
+}
+function stopAll(){ [...inflight].forEach(c => c.abort()); }
+
+function loadingEl(msg, rotate){
+  const t = el("span", { text: msg });
+  const box = el("div", { class: "loading" }, el("span", { class: "mag", "aria-hidden": "true" }, "🔍"), t);
+  if (rotate && rotate.length) {
+    let i = 0; const iv = setInterval(() => { if (!document.body.contains(box)) return clearInterval(iv); t.textContent = rotate[i++ % rotate.length]; }, 4500);
+  }
+  return box;
+}
+function errEl(msg, retry){
+  return el("div", { class: "err" }, msg, retry ? el("div", { class: "row" }, el("button", { class: "btn navy", type: "button", onclick: retry }, "Try Again")) : null);
+}
+
+/* ---------- photos (Wikipedia / Wikimedia Commons, credited; kept in memory for this visit only) ---------- */
+const photoMem = {};
+function wikiPhoto(title, size){
+  if (!title) return Promise.resolve(null);
+  const key = title + "|" + (size || 800);
+  if (photoMem[key]) return photoMem[key];
+  return (photoMem[key] = (async () => {
+    try {
+      const u = "https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*&redirects=1&prop=pageimages&piprop=thumbnail&pithumbsize=" + (size || 800) + "&titles=" + encodeURIComponent(title);
+      const j = await (await fetch(u)).json();
+      const page = Object.values((j.query && j.query.pages) || {})[0];
+      const src = page && page.thumbnail && page.thumbnail.source;
+      if (!src || /\.svg/i.test(src)) return null;
+      return { src, title: page.title, link: "https://en.wikipedia.org/wiki/" + encodeURIComponent(page.title.replace(/ /g, "_")) };
+    } catch(e){ return null; }
+  })());
+}
+function photoFig(title){
+  const fig = el("figure", { class: "photo", hidden: "" });
+  wikiPhoto(title).then(p => {
+    if (!p) return fig.remove();
+    const img = el("img", { src: p.src, alt: p.title, loading: "lazy" });
+    img.onerror = () => fig.remove();
+    fig.append(img, el("figcaption", {}, "Photo: ", el("a", { href: p.link, target: "_blank", rel: "noopener", text: "Wikipedia, " + p.title })));
+    fig.hidden = false;
+  });
+  return fig;
+}
+function buildBanner(){
+  const b = $("#banner");
+  shuffle(BANNER).slice(0, 8).forEach(t => {
+    const fig = el("figure", {}); b.append(fig);
+    wikiPhoto(t, 400).then(p => {
+      if (!p) return;
+      const img = el("img", { src: p.src, alt: "" });
+      img.onload = () => img.classList.add("on");
+      fig.append(img, el("figcaption", { text: p.title }));
+    });
+  });
+}
+
+/* ---------- Mr. Paul's speech bubble ---------- */
+function say(text){ const b = $(".mpbub"); if (b) b.textContent = text; }
+
+/* ---------- screen, navigation and the control bar ---------- */
+const state = { view: null, stack: [], side: "home", stage: "learn", paused: false };
+const display = $("#display");
+function setBar(left, kind){ $("#barLeft").textContent = left || "The Research Desk"; $("#barRight").textContent = BAR_RIGHT[kind] || BAR_RIGHT.home; }
+function ctrlBar(){
+  const v = state.view || {};
+  const bar = el("div", { class: "ctrl noprint" });
+  if (state.stack.length) bar.append(el("button", { type: "button", onclick: goBack }, "← Back"));
+  bar.append(el("button", { type: "button", class: "stop", onclick: stopAll, title: "Stop what the desk is working on" }, "⏹ Stop"));
+  bar.append(el("button", { type: "button", class: "pause" + (state.paused ? " on" : ""), onclick: togglePause,
+    title: state.paused ? "Let the next step run" : "Hold the next step (like the advisor panel) until you're ready" }, state.paused ? "▶ Resume" : "⏸ Pause"));
+  if (v.restart) bar.append(el("button", { type: "button", onclick: () => { stopAll(); v.restart(); } }, "🔄 Restart"));
+  bar.append(el("button", { type: "button", onclick: closeView }, "✖ Close"),
+    el("button", { type: "button", onclick: goHome }, "🏠 Back to Start"));
+  return bar;
+}
+function togglePause(){
+  state.paused = !state.paused;
+  say(state.paused ? "Paused. Take your time reading. Tap Resume when you want the panel to weigh in." : "Back at it. The panel is ready when you are.");
+  repaint();
+}
+function paint(view){
+  display.innerHTML = "";
+  if (!view.isHome) display.append(ctrlBar());
+  view.render(display);
+}
+function show(view, push = true){
+  if (push && state.view && !state.view.transient) state.stack.push(state.view);
+  state.view = view;
+  paint(view);
+  if (push) scrollToEl(display.closest(".deskwrap"));
+}
+function repaint(){ if (state.view) paint(state.view); }
+function scrollToEl(node){
+  if (!node) return;
+  if (window.parent !== window) {
+    try { window.parent.postMessage({ lwToolScrollY: Math.max(0, node.getBoundingClientRect().top + window.scrollY - 10) }, "*"); } catch(e){}
+  } else node.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+function goBack(){ stopAll(); const v = state.stack.pop(); if (v) { state.view = v; paint(v); } }
+function closeView(){ stopAll(); state.stack = []; state.view = homeView(); paint(state.view); setBar("", "home"); }
+function goHome(){
+  stopAll(); state.stack = []; state.paused = false;
+  $("#mainQ").value = ""; $("#leanQ").value = "";
+  setSeg("sideSeg", "home"); setSeg("stageSeg", "learn");
+  state.view = homeView(); paint(state.view); setBar("", "home");
+  say("Welcome to the Research Desk! What are you thinking of buying or hiring?");
+  scrollToEl($(".top"));
+}
+
+/* ---------- home ---------- */
+function homeView(){
+  return { isHome: true, render(d){
+    setBar("", "home");
+    d.append(el("div", { class: "welcome" },
+      el("h2", { text: "Your independent second opinion" }),
+      el("p", { class: "sub", text: "Before you buy or hire anything, get the full picture from someone who's only on your side." }),
+      el("div", { class: "steps3" },
+        el("div", {}, el("b", {}, el("span", { text: "1" }), "Tell us what it is"), el("p", { text: "Type anything above. Pick Home or Business, and whether you're learning or you've already decided." })),
+        el("div", {}, el("b", {}, el("span", { text: "2" }), "Answer, or skip"), el("p", { text: "A few quick questions sharpen the guide. Not sure? Skip any of them and the guide covers every case." })),
+        el("div", {}, el("b", {}, el("span", { text: "3" }), "Get the guide and the verdict"), el("p", { text: "A detailed, source-checked guide, then an advisor panel challenges it and Mr. Paul gives the verdict." }))),
+      el("div", { class: "diff" },
+        el("div", {}, el("b", { text: "🚫 No brands, no sponsors. " }), "We teach you how to judge any brand or provider yourself."),
+        el("div", {}, el("b", { text: "🧑‍⚖️ A panel picked for your decision. " }), "A decorator for a sofa, a CFO for accounting software, and a skeptic every time."),
+        el("div", {}, el("b", { text: "✅ Confirm or step back. " }), "Already decided? The panel checks your reasoning, and Mr. Paul tells you straight."),
+        el("div", {}, el("b", { text: "🔎 Search smarter. " }), "Every guide ends with ready-made Google searches that teach you the pro tricks."))));
+  }};
+}
+
+/* ---------- start a guide ---------- */
+function setSeg(id, v){ document.querySelectorAll("#" + id + " button").forEach(b => b.classList.toggle("on", b.dataset.v === v)); if (id === "sideSeg") state.side = v; else { state.stage = v; $("#leanBox").hidden = v !== "decided"; } }
+function startGuide(){
+  const q = $("#mainQ").value.trim();
+  if (q.length < 2) { $("#mainQ").focus(); say("Type what you're thinking of buying or hiring, and I'll get the research desk going."); return; }
+  const job = { question: q, side: state.side, stage: state.stage, leaning: state.stage === "decided" ? $("#leanQ").value.trim() : "", answers: [], details: "", style: "full", thread: [] };
+  if (job.stage === "decided" && !job.leaning) say("Tip: tell me what you're leaning toward and why, and the panel can check your reasoning. I'll still build the guide.");
+  state.stack = [];
+  show(triageView(job), false);
+}
+
+function triageView(job){
+  const v = { transient: true, restart: () => { job.triage = null; paint(v); }, render(d){
+    setBar(job.question, "triage");
+    if (job.triage) return;
+    const box = el("div", {}); d.append(box);
+    box.append(loadingEl("Reading your question and picking your advisor panel..."));
+    api({ mode: "triage", question: job.question, side: job.side, stage: job.stage, leaning: job.leaning }).then(t => {
+      if (state.view !== v) return;
+      if (!t.onTopic) { box.innerHTML = ""; box.append(errEl(t.message || "The Buyer's Guide is for things you buy or hire.")); say(t.message || "That one's outside the Buyer's Guide."); return; }
+      job.triage = t;
+      job.answers = (t.questions || []).map(q => ({ q: q.q, a: "" }));
+      if (!t.questions || !t.questions.length) show(reportView(job), false);
+      else show(clarifyView(job), false);
+    }).catch(e => { if (state.view !== v) return; box.innerHTML = ""; box.append(errEl(e.message, () => paint(v))); });
+  }};
+  return v;
+}
+
+/* ---------- clarifying questions (every one can be skipped) ---------- */
+function panelCards(panel){
+  return el("div", { class: "panelrow" }, (panel || []).map(p => el("div", { class: "pcard" }, el("span", { class: "ic", "aria-hidden": "true", text: p.icon }), el("div", {}, el("b", { text: p.name }), el("small", { text: p.role })))));
+}
+function clarifyView(job){
+  const t = job.triage;
+  const v = { restart: () => { job.answers.forEach(a => a.a = ""); job.details = ""; paint(v); }, render(d){
+    setBar(t.title, "clarify");
+    say("A few quick questions. Not sure? Tap Skip. I'll cover every case in the guide.");
+    d.append(el("div", { class: "h2", text: t.title }),
+      el("div", { class: "badges" }, el("span", { class: "badge", text: job.side === "business" ? "💼 For Business" : "🏠 For Home" }), el("span", { class: "badge", text: job.stage === "decided" ? "✅ Checking my choice" : "📚 Learning" }), el("span", { class: "badge gold", text: t.kind })),
+      el("p", { class: "sub", text: "Your advisor panel for this decision:" }), panelCards(t.panel));
+    t.questions.forEach((q, i) => {
+      const chips = el("div", { class: "chips" });
+      const pick = val => { job.answers[i].a = val; chips.querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.v === val)); };
+      q.options.forEach(o => chips.append(el("button", { type: "button", "data-v": o, class: job.answers[i].a === o ? "on" : "", onclick: () => pick(o) }, o)));
+      chips.append(el("button", { type: "button", "data-v": "skip", class: "skip" + (job.answers[i].a === "skip" ? " on" : ""), onclick: () => pick("skip") }, "Not sure / Skip"));
+      d.append(el("div", { class: "cq" }, el("p", { text: q.q }), chips));
+    });
+    const ta = el("textarea", { id: "detQ", maxlength: "700" }); ta.value = job.details;
+    ta.addEventListener("input", () => job.details = ta.value);
+    d.append(el("div", { class: "detbox" }, el("label", { for: "detQ", text: "Anything else the panel should know? (optional)" }), ta),
+      el("div", { class: "row" },
+        el("button", { class: "btn", type: "button", onclick: () => show(reportView(job)) }, "Build My Guide"),
+        el("button", { class: "btn ghost", type: "button", onclick: () => { job.answers.forEach(a => a.a = "skip"); show(reportView(job)); } }, "Skip the Questions")));
+  }};
+  return v;
+}
+
+/* ---------- the report ---------- */
+function payload(job, extra){
+  return Object.assign({ question: job.question, side: job.side, stage: job.stage, leaning: job.leaning, answers: job.answers, details: job.details, sensitive: !!(job.triage && job.triage.sensitive), title: job.report ? job.report.title : (job.triage && job.triage.title) }, extra || {});
+}
+function summaryOf(r){
+  if (!r) return "";
+  return [r.quickTake, "Top factors: " + (r.mattersMost || []).slice(0, 5).map(m => m.factor + " (" + m.weight + "/10)").join(", "),
+    "Red flags: " + (r.redFlags || []).slice(0, 4).join("; "),
+    r.yourChoice ? "Their choice: " + r.yourChoice.summary + " Concerns: " + (r.yourChoice.concerns || []).join("; ") : ""].filter(Boolean).join("\n");
+}
+function sec(id, icon, title, ...kids){ return el("section", { class: "sec", id: "s-" + id }, el("h3", {}, el("span", { "aria-hidden": "true", text: icon }), title), ...kids); }
+function list(items){ return el("ul", { class: "clean" }, (items || []).map(x => el("li", { text: x }))); }
+
+function reportView(job){
+  const v = { restart: () => { job.report = null; job.panel = null; job.thread = []; job.style = "full"; paint(v); }, render(d){
+    setBar(job.triage ? job.triage.title : job.question, job.report ? "report" : "work");
+    if (!job.report) {
+      const box = el("div", {}); d.append(box);
+      if (job.pending) { box.append(loadingEl("Still researching...")); return; }
+      say(job.stage === "decided" ? "I'm digging into your choice. The panel's sharpening their pencils." : "I'm researching what really matters here. This takes about a minute.");
+      box.append(loadingEl("Researching independent sources...", ["Checking what independent testers say matters...", "Looking up typical price ranges...", "Finding the common complaints and red flags...", "Working out the questions to ask...", job.style === "extended" ? "Going extra deep for the double-length guide..." : "Building your decision path..."]));
+      job.pending = api(payload(job, { mode: "report", style: job.style })).then(r => {
+        job.pending = null;
+        if (!r.ok) throw new Error(r.message || "The guide didn't come together. Try again.");
+        job.report = r;
+        if (state.view === v) { paint(v); }
+      }).catch(e => { job.pending = null; if (state.view === v) { box.innerHTML = ""; box.append(errEl(e.message, () => paint(v))); } });
+      return;
+    }
+    renderReport(d, job, v);
+  }};
+  return v;
+}
+
+function renderReport(d, job, v){
+  const r = job.report;
+  const decided = job.stage === "decided";
+  const head = el("div", { class: "rhead" },
+    el("div", { class: "txt" }, el("div", { class: "h2", text: r.title || job.triage.title }),
+      el("div", { class: "badges" }, el("span", { class: "badge", text: job.side === "business" ? "💼 For Business" : "🏠 For Home" }), el("span", { class: "badge", text: decided ? "✅ Second Look" : "📚 Buyer's Education" }), job.style === "extended" ? el("span", { class: "badge gold", text: "Double Length" }) : null),
+      el("div", { class: "quick" }, el("b", { text: "Mr. Paul's Quick Take" }), r.quickTake)),
+    r.wiki ? photoFig(r.wiki) : null);
+  d.append(head);
+
+  // section nav
+  const navItems = [];
+  const nav = el("div", { class: "nav noprint" });
+  d.append(nav);
+  const add = (id, label, node) => { if (!node) return; navItems.push([id, label]); d.append(node); };
+
+  if (r.yourChoice) add("choice", "Your Choice", sec("choice", "🎯", "A Second Look at Your Choice", el("div", { class: "yc" },
+    el("p", { style: "margin:0;font-weight:700", text: r.yourChoice.summary }),
+    r.yourChoice.sound.length ? [el("h4", { text: "✅ What's solid" }), list(r.yourChoice.sound)] : null,
+    r.yourChoice.concerns.length ? [el("h4", { text: "⚠️ What concerns us" }), list(r.yourChoice.concerns)] : null,
+    r.yourChoice.confirm.length ? [el("h4", { text: "🔍 Confirm before you commit" }), list(r.yourChoice.confirm)] : null)));
+
+  if (r.whatItIs) add("basics", "The Basics", sec("basics", "📘", "The Basics", el("p", { style: "margin:0;font-size:16.5px", text: r.whatItIs })));
+
+  if (r.types.length) add("types", "Types", sec("types", "🗂️", "The Main Types, Side by Side",
+    el("div", { class: "tblwrap" }, el("table", { class: "cmp" },
+      el("thead", {}, el("tr", {}, ["Type", "Best for", "Strengths", "Watch out", "Cost"].map(h => el("th", { text: h })))),
+      el("tbody", {}, r.types.map(t => el("tr", {}, el("td", { text: t.name }), el("td", { text: t.bestFor }), el("td", { text: t.strengths }), el("td", { text: t.watchOut }), el("td", { class: "cost", text: t.cost || "—" })))))),
+    el("p", { class: "note", text: "Cost is relative: $ is the least expensive type, $$$$ the most." })));
+
+  if (r.mattersMost.length) {
+    const bars = el("div", { class: "bars" }, r.mattersMost.map(m => {
+      const fill = el("div", { class: "fill" + (m.weight >= 8 ? "" : m.weight >= 5 ? " w2" : " w3"), "data-w": m.weight * 10 });
+      return el("div", { class: "barrow" }, el("div", { class: "lab" }, m.factor, el("span", { text: m.weight + " / 10" })), el("div", { class: "track" }, fill), el("p", { text: m.why }));
+    }));
+    add("matters", "What Matters", sec("matters", "📊", "What Matters Most for You", bars, el("p", { class: "note", text: "Weights are Mr. Paul's guidance for your situation, based on the research. They're not lab scores." })));
+    requestAnimationFrame(() => setTimeout(() => bars.querySelectorAll(".fill").forEach(f => f.style.width = f.dataset.w + "%"), 60));
+  }
+
+  if (r.covering.length) add("covering", "Covering Your Bases", sec("covering", "🧭", "Covering Your Bases",
+    el("p", { class: "sub", text: "You skipped a question or two, so here's what to do in each case." }),
+    r.covering.map(c => el("div", { class: "ifthen" }, el("div", { text: "If " + c.if.replace(/^if\s+/i, "") }), el("div", { text: c.then })))));
+
+  if (r.hype.length) add("hype", "Hype vs. Reality", sec("hype", "📣", "Hype vs. Reality",
+    r.hype.map(h => el("div", { class: "hype" }, el("div", { class: "c" }, el("small", { text: "What they say" }), h.claim), el("div", { class: "r" }, el("small", { text: "What it really means" }), h.reality)))));
+
+  const hasCost = r.prices.length || r.costs.upfront.length || r.costs.ongoing.length || r.costs.hidden.length || r.lifespan.years;
+  if (hasCost) add("cost", "Price & Real Cost", sec("cost", "💵", "Price and the Real Cost",
+    r.prices.length ? el("div", { class: "ladder" }, r.prices.map(p => el("div", { class: "rung" }, el("b", { text: p.tier }), el("div", { class: "amt", text: p.range }), el("p", { text: p.get })))) : null,
+    r.prices.length ? el("p", { class: "note", text: r.priceNote || "Typical ranges at the time of research. Prices vary by region and change over time." }) : null,
+    el("div", { class: "cols3 money", style: "margin-top:12px" },
+      r.costs.upfront.length ? el("div", { class: "card" }, el("h4", { text: "💳 Up front" }), list(r.costs.upfront)) : null,
+      r.costs.ongoing.length ? el("div", { class: "card" }, el("h4", { text: "🔁 Ongoing" }), list(r.costs.ongoing)) : null,
+      r.costs.hidden.length ? el("div", { class: "card" }, el("h4", { text: "🕵️ Hidden costs" }), list(r.costs.hidden)) : null),
+    r.lifespan.years ? el("div", { class: "life" }, el("b", { text: "⏳ Typical lifespan: " + r.lifespan.years }), el("div", { class: "line" }), el("p", { style: "margin:0;font-size:14.5px", text: r.lifespan.note })) : null));
+
+  if (r.questions.length || r.redFlags.length) add("ask", "Questions & Red Flags", sec("ask", "🗒️", "Questions to Ask and Red Flags",
+    el("div", { class: "cols2" },
+      r.questions.length ? el("div", { class: "card" }, el("h4", { style: "margin:0 0 6px;color:var(--navy)", text: "❓ Ask them" }), list(r.questions)) : null,
+      r.redFlags.length ? el("div", { class: "card", style: "border-color:#f2b8aa" }, el("h4", { style: "margin:0 0 6px;color:var(--red)", text: "🚩 Walk away if..." }), list(r.redFlags)) : null)));
+
+  if (r.verify.length) add("verify", "Check Them Out", sec("verify", "🛡️", "Check Them Out", list(r.verify)));
+  if (r.timing) add("timing", "Timing", sec("timing", "📅", "When to Buy", el("p", { style: "margin:0", text: r.timing })));
+  if (r.mistakes.length) add("regrets", "Common Regrets", sec("regrets", "😬", "What Buyers Wish They'd Known", list(r.mistakes)));
+
+  if (r.path.length) add("path", "Decision Path", sec("path", "🛤️", "Your Decision Path", el("div", { class: "flow" },
+    r.path.map((p, i) => [
+      el("div", { class: "fnode" }, el("div", { class: "fq" }, el("span", { text: String(i + 1) }), p.q), el("div", { class: "fno" }, el("b", { text: "If no: " }), p.no || "Stop and rethink before going further.")),
+      el("div", { class: "farrow", text: "↓ Yes" })]).flat(),
+    el("div", { class: "fend", text: "✅ You're ready to buy or hire with confidence" }))));
+
+  if (r.deeper.length) add("deeper", "Go Deeper", sec("deeper", "🔬", "Go Deeper", r.deeper.map(x => el("div", { class: "card" }, el("h4", { style: "margin:0 0 4px;color:var(--navy)", text: x.heading }), el("p", { style: "margin:0", text: x.text })))));
+
+  if (r.searches.length) add("search", "Search Smarter", sec("search", "🔎", "Search Smarter on Google",
+    el("p", { class: "sub", text: "Want to dig further on your own? These searches are built for this guide. Each one teaches a trick most people don't know." }),
+    r.searches.map(s => el("div", { class: "sq" }, el("code", { text: s.query }), el("p", { text: s.teaches }),
+      el("div", { class: "sb noprint" }, el("button", { class: "mini", type: "button", onclick: () => copyText(s.query) }, "📋 Copy"),
+        el("a", { class: "mini gold", href: "https://www.google.com/search?q=" + encodeURIComponent(s.query), target: "_blank", rel: "noopener" }, "Open in Google ↗")))),
+    el("div", { class: "cheat" },
+      el("div", {}, el("code", { text: '"exact phrase"' }), " finds those words in that order"),
+      el("div", {}, el("code", { text: "-word" }), " leaves out pages with that word"),
+      el("div", {}, el("code", { text: "OR" }), " finds either word (capital letters)"),
+      el("div", {}, el("code", { text: "site:.gov" }), " searches only one kind of site"),
+      el("div", {}, el("code", { text: "filetype:pdf" }), " finds guides and spec sheets"),
+      el("div", {}, el("code", { text: "intitle:word" }), " the word must be in the page title")),
+    el("p", { class: "note", text: "These tricks narrow your results, but Google still shows sponsored results at the top. Look for the \"Sponsored\" label." })));
+
+  // sources + notes
+  d.append(el("div", { class: "fn" },
+    r.sources.length ? [el("b", { text: "Sources checked" }), el("ol", {}, r.sources.map(s => el("li", {}, el("a", { href: s.url, target: "_blank", rel: "noopener", text: s.title }))))] : el("p", { class: "ainote", text: r.sourceNote }),
+    r.adviceNote ? el("div", { class: "advice", text: "⚖️ " + r.adviceNote }) : null,
+    el("p", { class: "ainote", text: "Researched live with AI. AI can make mistakes, and prices and rules change, so double-check anything important before you buy or sign. No brands or companies are recommended, and nobody pays to be in this guide." })));
+
+  // the advisor panel
+  const pz = el("div", { class: "panelzone", id: "s-panel" });
+  navItems.push(["panel", "The Panel & Verdict"]);
+  d.append(pz);
+  renderPanel(pz, job, v);
+
+  // follow-ups
+  d.append(askBar(job, v));
+
+  // tools row
+  d.append(el("div", { class: "toolsrow noprint" },
+    job.style !== "extended" ? el("button", { class: "btn navy", type: "button", onclick: () => { stopAll(); job.style = "extended"; job.report = null; job.panel = null; paint(v); scrollToEl(display.closest(".deskwrap")); } }, "📄 Double Length") : null,
+    el("button", { class: "btn ghost", type: "button", onclick: () => window.print() }, "🖨️ Print / Save as PDF"),
+    el("button", { class: "btn ghost", type: "button", onclick: () => copyText(plainText(job)) }, "📋 Copy the Guide"),
+    el("button", { class: "btn ghost", type: "button", onclick: goHome }, "🆕 New Guide")));
+
+  navItems.forEach(([id, label]) => nav.append(el("button", { type: "button", onclick: () => { const t = document.getElementById("s-" + id); if (t) scrollToEl(t); } }, label)));
+}
+
+function renderPanel(pz, job, v){
+  const panel = (job.triage && job.triage.panel) || [];
+  const decided = job.stage === "decided";
+  pz.append(el("h3", { text: "🧑‍⚖️ The Advisor Panel" }),
+    el("p", { class: "sub", text: decided ? "Your panel challenges your choice from every angle. Then Mr. Paul gives the verdict." : "Your panel challenges the plan and the usual buyer assumptions. Then Mr. Paul gives the verdict." }));
+  if (!job.panel) {
+    pz.append(panelCards(panel));
+    if (state.paused) { pz.append(el("div", { class: "paused" }, "⏸ The panel is paused while you read. Tap ", el("b", { text: "▶ Resume" }), " in the controls when you're ready.")); return; }
+    const box = el("div", {}); pz.append(box);
+    if (job.panelPending) { box.append(loadingEl("The panel is still talking it over...")); return; }
+    box.append(loadingEl("The panel is reviewing the guide...", ["The skeptic is reading the fine print...", "Weighing the money side...", "Mr. Paul is writing the verdict..."]));
+    say("The guide's ready. Now the panel's going to push back. That's where the good stuff is.");
+    job.panelPending = api(payload(job, { mode: "panel", panel, summary: summaryOf(job.report) })).then(p => {
+      job.panelPending = null;
+      if (!p.ok) throw new Error(p.message || "The panel couldn't meet. Try again.");
+      job.panel = p;
+      say({ confirmed: "Good news: the panel backs you. Read the reasons, then go for it.", conditions: "You're close. Check the conditions first, and you're set.", stepback: "Hold on. The panel thinks you should step back first. Here's why." }[p.verdict]);
+      const cur = document.getElementById("s-panel");
+      if (state.view === v && cur) { cur.innerHTML = ""; renderPanel(cur, job, v); }
+    }).catch(e => { job.panelPending = null; if (state.view === v) { box.innerHTML = ""; box.append(errEl(e.message, () => repaint())); } });
+    return;
+  }
+  pz.append(panelResult(job));
+}
+
+function panelResult(job){
+  const p = job.panel, panel = (job.triage && job.triage.panel) || [];
+  const iconOf = name => (panel.find(x => x.name === name) || {}).icon || "🗣️";
+  const wrap = el("div", {});
+  wrap.append(...p.advisors.map(a => el("div", { class: "adv s" + a.stance },
+    el("div", { class: "who" }, el("span", { class: "ic", "aria-hidden": "true", text: iconOf(a.name) }), el("div", {}, el("b", { text: a.name }), el("small", { text: (panel.find(x => x.name === a.name) || {}).role || "" })), el("span", { class: "pill p" + a.stance, text: STANCE[String(a.stance)] })),
+    a.headline ? el("p", { class: "hl", text: a.headline }) : null,
+    el("p", { style: "margin:0", text: a.argument }),
+    a.question ? el("div", { class: "askq", text: "Ask yourself: " + a.question }) : null)));
+  // where the panel stands (chart)
+  const axis = el("div", { class: "axis" });
+  const groups = {};
+  p.advisors.forEach(a => (groups[a.stance] = groups[a.stance] || []).push(a));
+  Object.entries(groups).forEach(([k, g]) => {
+    const left = ((Number(k) + 2) / 4) * 100;
+    axis.append(el("div", { class: "tick", style: "left:" + left + "%", title: g.map(a => a.name).join(", ") + ": " + STANCE[k] },
+      g.map(a => iconOf(a.name)).join(""), g.map(a => el("small", { text: a.name }))));
+  });
+  const legend = el("div", { class: "legend" }, p.advisors.map(a => el("div", {}, el("span", { "aria-hidden": "true", text: iconOf(a.name) }), " " + a.name + ": ", el("b", { class: "p" + a.stance, text: STANCE[String(a.stance)] }))));
+  wrap.append(el("div", { class: "scale" }, el("b", { style: "color:var(--navy)", text: "Where the panel stands" }), axis, el("div", { class: "ends" }, el("span", { text: "Step back" }), el("span", { text: "Mixed" }), el("span", { text: "Go ahead" })), legend));
+  // verdict
+  const label = VERDICT[job.stage === "decided" ? "decided" : "learn"][p.verdict];
+  wrap.append(el("div", { class: "verdict" },
+    el("div", { class: "seal v-" + p.verdict }, el("span", { text: label })),
+    el("div", { class: "vt" }, el("h4", { text: p.verdictTitle || label }), list(p.reasons),
+      p.conditions.length ? [el("b", { style: "display:block;margin-top:8px;color:var(--navy)", text: p.verdict === "stepback" ? "Before you go further:" : "Check these first:" }), list(p.conditions)] : null,
+      p.finalWord ? el("div", { class: "fw" }, "Mr. Paul: ", p.finalWord) : null)));
+  return wrap;
+}
+
+/* ---------- follow-up questions (to Mr. Paul or one advisor) ---------- */
+function askBar(job, v){
+  const panel = (job.triage && job.triage.panel) || [];
+  const thread = el("div", {});
+  const drawThread = () => {
+    thread.innerHTML = "";
+    job.thread.forEach(t => {
+      thread.append(el("div", { class: "say me" }, el("span", { class: "ic", "aria-hidden": "true", text: "🙋" }), el("div", { class: "bub" }, el("b", { text: "You asked " + t.who }), t.q)));
+      if (t.pending) thread.append(loadingEl(t.who + " is looking into it..."));
+      else if (t.error) thread.append(errEl(t.error));
+      else thread.append(el("div", { class: "say" }, el("span", { class: "ic", "aria-hidden": "true", text: t.who === "Mr. Paul" ? "👨‍🏫" : ((panel.find(x => x.name === t.who) || {}).icon || "🗣️") }),
+        el("div", { class: "bub" }, el("b", { text: t.who }), t.a, t.clarify ? el("div", { class: "cl", text: t.clarify }) : null,
+          t.sources && t.sources.length ? el("div", { class: "ainote" }, "Sources: ", t.sources.map((s, i) => [i ? " · " : "", el("a", { href: s.url, target: "_blank", rel: "noopener", text: s.title })]).flat()) : null)));
+    });
+  };
+  drawThread();
+  const sel = el("select", { "aria-label": "Who to ask" }, el("option", { value: "Mr. Paul", text: "Ask Mr. Paul" }), panel.map(p => el("option", { value: p.name, text: "Ask the " + p.name })));
+  const ta = el("textarea", { maxlength: "700", "aria-label": "Your question" });
+  const send = () => {
+    const q = ta.value.trim(); if (!q) { ta.focus(); return; }
+    const t = { who: sel.value, q, pending: true };
+    job.thread.push(t); ta.value = ""; drawThread();
+    api(payload(job, { mode: "ask", to: t.who, q, panel, summary: summaryOf(job.report), history: job.thread.filter(x => x.a).map(x => ({ q: x.q, who: x.who, a: x.a })) }))
+      .then(a => { t.pending = false; t.a = a.text; t.clarify = a.clarify; t.sources = a.sources; drawThread(); })
+      .catch(e => { t.pending = false; t.error = e.message; drawThread(); });
+  };
+  const chips = (job.report.followups || []).length ? el("div", { class: "chips", style: "margin-bottom:8px" }, job.report.followups.map(f => el("button", { type: "button", onclick: () => { ta.value = f; ta.focus(); } }, f))) : null;
+  return el("div", { class: "askbar" },
+    el("h3", { text: "💬 Questions or Clarifications" }),
+    el("p", { class: "sub", text: "Ask Mr. Paul or anyone on the panel. If they need one more detail to answer well, they'll ask you." }),
+    thread,
+    el("div", { class: "qbox noprint" }, chips, sel, ta, el("div", { class: "row", style: "margin-top:8px" }, el("button", { class: "btn navy", type: "button", onclick: send }, "Ask"))));
+}
+
+/* ---------- copy the whole guide as plain text ---------- */
+function plainText(job){
+  const r = job.report, out = [];
+  const L = (h, a) => { if (a && a.length) { out.push("", h.toUpperCase()); a.forEach(x => out.push("- " + x)); } };
+  out.push("THE BUYER'S GUIDE: " + (r.title || ""), "From NuSparkLearnWow.com", "", "QUICK TAKE", r.quickTake);
+  if (r.yourChoice) { out.push("", "A SECOND LOOK AT YOUR CHOICE", r.yourChoice.summary); L("What's solid", r.yourChoice.sound); L("What concerns us", r.yourChoice.concerns); L("Confirm before you commit", r.yourChoice.confirm); }
+  if (r.whatItIs) out.push("", "THE BASICS", r.whatItIs);
+  L("The main types", r.types.map(t => t.name + " (" + (t.cost || "") + "): best for " + t.bestFor + ". Strengths: " + t.strengths + ". Watch out: " + t.watchOut));
+  L("What matters most", r.mattersMost.map(m => m.factor + " (" + m.weight + "/10): " + m.why));
+  L("Covering your bases", r.covering.map(c => "If " + c.if.replace(/^if\s+/i, "") + ", then " + c.then));
+  L("Hype vs. reality", r.hype.map(h => h.claim + " -> " + h.reality));
+  L("Price ranges", r.prices.map(p => p.tier + ": " + p.range + ". " + p.get)); if (r.prices.length && r.priceNote) out.push(r.priceNote);
+  L("Up-front costs", r.costs.upfront); L("Ongoing costs", r.costs.ongoing); L("Hidden costs", r.costs.hidden);
+  if (r.lifespan.years) out.push("", "TYPICAL LIFESPAN: " + r.lifespan.years + ". " + r.lifespan.note);
+  L("Questions to ask", r.questions); L("Red flags", r.redFlags); L("Check them out", r.verify);
+  if (r.timing) out.push("", "WHEN TO BUY", r.timing);
+  L("What buyers wish they'd known", r.mistakes);
+  L("Your decision path", r.path.map((p, i) => (i + 1) + ". " + p.q + " If no: " + p.no));
+  r.deeper.forEach(x => out.push("", x.heading.toUpperCase(), x.text));
+  L("Search smarter on Google", r.searches.map(s => s.query + "   (" + s.teaches + ")"));
+  if (job.panel) {
+    const p = job.panel;
+    out.push("", "THE ADVISOR PANEL");
+    p.advisors.forEach(a => out.push("- " + a.name + " (" + STANCE[String(a.stance)] + "): " + a.headline + " " + a.argument + (a.question ? " Ask yourself: " + a.question : "")));
+    out.push("", "VERDICT: " + VERDICT[job.stage === "decided" ? "decided" : "learn"][p.verdict].toUpperCase() + " (" + (p.verdictTitle || "") + ")");
+    p.reasons.forEach(x => out.push("- " + x)); L("Check first", p.conditions); if (p.finalWord) out.push("Mr. Paul: " + p.finalWord);
+  }
+  L("Sources", r.sources.map(s => s.title + " " + s.url));
+  if (r.adviceNote) out.push("", r.adviceNote);
+  out.push("", "Researched live with AI. Double-check anything important before you buy or sign.");
+  return out.join("\n");
+}
+
+/* ---------- wire it up ---------- */
+document.querySelectorAll("#sideSeg button").forEach(b => b.addEventListener("click", () => setSeg("sideSeg", b.dataset.v)));
+document.querySelectorAll("#stageSeg button").forEach(b => b.addEventListener("click", () => setSeg("stageSeg", b.dataset.v)));
+$("#mainGo").addEventListener("click", startGuide);
+$("#mainQ").addEventListener("keydown", e => { if (e.key === "Enter") startGuide(); });
+buildBanner();
+state.view = homeView(); paint(state.view);
+</script>
+</body>
+</html>
