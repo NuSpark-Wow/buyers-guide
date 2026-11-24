@@ -4,7 +4,7 @@
 // One endpoint, several modes:
 //   triage — reads the query, picks the right advisor panel for it, and writes clarifying questions (every one can be skipped)
 //   report — the full, source-checked Buyer's Guide (learn mode) or a Second Look at a decision (decided mode)
-//   panel  — the advisor panel challenges the decision, then the verdict: Confirmed / Confirmed With Conditions / Step Back
+//   panel  — the advisor panel weighs in with balanced positives and concerns, then the verdict: Confirmed / Confirmed With Conditions / Step Back
 //   prices — typical price ranges on request (a button in learn mode; decided mode gets them in the guide)
 //   ask    — follow-up questions to Mr. Paul or one advisor; may ask a clarifying question back
 // Honesty rule: every source shown is a page Claude actually retrieved with web search during THIS request.
@@ -15,7 +15,7 @@ const DAILY_LIMIT = parseInt(process.env.DAILY_LIVE_LIMIT || "30", 10);
 const ALLOWED = (process.env.ALLOWED_ORIGINS || "").split(",").map(s => s.trim()).filter(Boolean);
 
 const SIDES = { home: "FOR HOME (a personal or household purchase or hire)", business: "FOR BUSINESS (a purchase or hire for a company or organization)" };
-const STAGES = { learn: "LEARNING (early: wants to understand what to look for)", decided: "DECIDED OR CLOSE (has a choice in mind and wants it confirmed, challenged, or stepped back from)" };
+const STAGES = { learn: "LEARNING (early: wants to understand what to look for)", decided: "DECIDED OR CLOSE (has a choice in mind and wants an honest, balanced second look: confirmed, confirmed with conditions, or a step back)" };
 const ICONS = ["🧮", "🛋️", "🔧", "⚖️", "📊", "🏠", "💼", "🛡️", "🔍", "🧰", "📈", "🧾", "🏗️", "💡", "🖥️", "🚗", "🩺", "🌱", "🎯", "🤝"];
 
 // --- simple per-IP daily limit (resets when the server instance restarts; the Anthropic spend cap is the real backstop)
@@ -33,7 +33,7 @@ const SYSTEM = `You are the editor of "The Buyer's Guide", an unbiased buying-ed
 WHAT THE TOOL DOES:
 - EDUCATES: what the thing is, the main types, what really matters, what is hype, what it really costs over time, the questions to ask, the red flags, and how to check out a seller or provider.
 - CONFIRMS OR STEPS BACK: when a visitor shares what they are leaning toward and why, look honestly at their reasoning. Reassure them where it is sound. Say clearly when they should step back, and why. Never just agree to please them.
-- CHALLENGES: a panel of advisors who fit the query (for example an interior decorator for a sofa, a fractional CFO for accounting software) pushes back from different angles so the buyer sees what they might be missing.
+- WEIGHS IN, BALANCED: a panel of advisors who fit the query (for example an interior decorator for a sofa, a fractional CFO for accounting software) each gives a fair, neutral view from their own angle: the real positives and the real concerns. They are not there to argue or to cheerlead, but to help the buyer see the whole picture.
 
 UNBIASED RULES (the heart of the tool):
 1. Never recommend, rank, endorse or compare specific brands, companies, stores, products, models, providers or local businesses. Teach product TYPES, features, standards and what to look for instead (for example "an OLED panel", "a CRM with native email sync", "a fee-only fiduciary advisor").
@@ -87,7 +87,7 @@ function modePrompt(mode, b) {
 Set up this Buyer's Guide. Do not research or answer it yet.
 1. Decide if it is on topic (buying, leasing, subscribing to or hiring something). If not, or if it is weapons, drugs or anything illegal, set onTopic false.
 2. Give it a short, clear title, like "Buying a Sofa Bed" or "Hiring a Financial Advisor" or "Choosing a CRM". Never add details the visitor didn't state: no assumed size, budget, location or situation (do not write "for a Small Business" unless they said so).
-3. Pick the ADVISOR PANEL: 3 or 4 advisors who would really sit at the table for THIS decision, each bringing a different angle. Mix one deep specialist (for example a home theater installer, a roofing inspector, an ERP implementation consultant, a fee-only planner), one money voice (for example a household budget coach, a fractional CFO), one hands-on voice (for example an interior decorator, an operations manager, a long-time owner), and one skeptic who pushes back on everything (for example a consumer protection investigator, a procurement officer). Give each a friendly role title only, never a personal name. Each gets one emoji icon.
+3. Pick the ADVISOR PANEL: 3 or 4 advisors who would really sit at the table for THIS decision, each bringing a different angle. Mix one deep specialist (for example a home theater installer, a roofing inspector, an ERP implementation consultant, a fee-only planner), one money voice (for example a household budget coach, a fractional CFO), one hands-on voice (for example an interior decorator, an operations manager, a long-time owner), and one careful voice who checks the fine print and the risks (for example a consumer protection investigator, a procurement officer). Every advisor is fair and balanced, not a cheerleader and not a naysayer. Give each a friendly role title only, never a personal name. Each gets one emoji icon.
 4. Write CLARIFYING QUESTIONS that would change the advice: at most ${b.side === "business" ? 2 : 3}, each short, with 2-5 tap options. Do NOT ask about budget or price range, and do NOT ask about company size, team size or number of employees: the tool asks those itself. Visitors can skip any of them and the guide still runs, so ask only what truly matters (for example room size and viewing distance for a TV; team size and current tools for a CRM; roof age and material for a roofer). ${b.stage === "decided" ? "They have a choice in mind, so ask what would most help judge it (budget, how long they plan to keep it, must-haves, timeline)." : ""} Never ask for personal information like names, addresses or account numbers.
 Reply with ONLY this JSON inside <json></json>:
 {"onTopic": true,
@@ -149,14 +149,14 @@ Guide title: "${String(b.title || "").slice(0, 160)}"
 Summary of the research so far: ${String(b.summary || "").slice(0, 3000)}
 The advisor panel for this decision:
 ${panelText(b.panel)}
-Each advisor now challenges ${decided ? "the visitor's choice and reasoning" : "the visitor's plan to buy this, and the common assumptions buyers make"}, from their own lens and in their own voice. They do not all agree. At least one must push back hard. They stay unbiased: no brands, no companies, no promotion.
+Each advisor now weighs in on ${decided ? "the visitor's choice and reasoning" : "the visitor's plan to buy this, and the common assumptions buyers make"}, from their own lens and in their own voice. Every advisor stays NEUTRAL and BALANCED: give the genuine positives AND the genuine concerns from their angle, not forced criticism and not empty praise. Their stance follows the evidence, so it is fine if they lean the same way when the facts point that way, or differ when their angles really do lead to different views. They stay unbiased: no brands, no companies, no promotion.
 Then Mr. Paul weighs the panel and gives the verdict.
 ${decided
   ? `Verdict options: "confirmed" (their choice and reasoning hold up), "conditions" (confirmed, but only if they check specific things first), "stepback" (they should pause and rethink, with clear reasons and what to consider instead). Be honest. Do not default to "confirmed" to please them.`
   : `Verdict options: "confirmed" (they are ready to shop with what they now know), "conditions" (ready to shop, but settle these questions first), "stepback" (slow down; something important needs thinking through before they shop, for example whether they need it at all, or a cheaper path such as repair, renting, used or refurbished, or waiting).`}
 "stance" is each advisor's position from -2 (strongly against / step back) to 2 (strongly for / go ahead).
 Reply with ONLY this JSON inside <json></json>:
-{"advisors": [{"name": "exactly the advisor's role title from the list", "stance": 1, "headline": "their one-line position", "argument": "3-5 sentences in their voice, specific to this buyer", "question": "the one question they want the buyer to answer honestly"}],
+{"advisors": [{"name": "exactly the advisor's role title from the list", "stance": 1, "headline": "their balanced one-line take", "positives": ["1-2 genuine positives from their angle"], "concerns": ["1-2 genuine concerns from their angle"], "argument": "2-3 sentences in their voice tying it together for this buyer", "question": "the one question they want the buyer to think about"}],
  "verdict": "confirmed | conditions | stepback",
  "verdictTitle": "a short, plain verdict headline",
  "reasons": ["3-4 reasons for the verdict"],
@@ -367,7 +367,7 @@ module.exports = async (req, res) => {
       const advisors = (Array.isArray(j.advisors) ? j.advisors : []).slice(0, 4).map((a, i) => ({
         name: names.find(n => n.toLowerCase() === String(a && a.name || "").toLowerCase().trim()) || names[i] || clip(a && a.name, 50),
         stance: Math.max(-2, Math.min(2, Math.round(Number(a && a.stance) || 0))),
-        headline: clip(a && a.headline, 200), argument: clip(a && a.argument, 1200), question: clip(a && a.question, 300)
+        headline: clip(a && a.headline, 200), positives: clipList(a && a.positives, 2, 300), concerns: clipList(a && a.concerns, 2, 300), argument: clip(a && a.argument, 1000), question: clip(a && a.question, 300)
       })).filter(a => a.name && a.argument);
       if (!advisors.length) return res.status(200).json({ ok: false, message: "The panel couldn't meet just now. Tap Try Again." });
       return res.status(200).json({
