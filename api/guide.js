@@ -5,6 +5,7 @@
 //   triage — reads the query, picks the right advisor panel for it, and writes clarifying questions (every one can be skipped)
 //   report — the full, source-checked Buyer's Guide (learn mode) or a Second Look at a decision (decided mode)
 //   panel  — the advisor panel challenges the decision, then the verdict: Confirmed / Confirmed With Conditions / Step Back
+//   prices — typical price ranges on request (a button in learn mode; decided mode gets them in the guide)
 //   ask    — follow-up questions to Mr. Paul or one advisor; may ask a clarifying question back
 // Honesty rule: every source shown is a page Claude actually retrieved with web search during THIS request.
 
@@ -106,13 +107,13 @@ Set "sensitive" to true for legal, financial, insurance, investment, tax or heal
       : `LENGTH: FULL. 3-5 types, 6-8 factors, 4-6 hype items, 8-10 questions, 6-8 red flags, and 2 "deeper" sections of 4-6 sentences each.`;
     return `${ctx(b)}
 ${style}
-Research this purchase with web search (several searches: what experts and independent testers say matters, current typical price ranges, common problems and complaints, and how to verify a seller or provider when it applies). Then write the Buyer's Guide.
+Research this purchase with web search (several searches: what experts and independent testers say matters, ${decided ? "current typical price ranges, " : ""}common problems and complaints, and how to verify a seller or provider when it applies). Then write the Buyer's Guide.
 ${decided ? `They are DECIDED OR CLOSE. Fill "yourChoice" with an honest second look at their choice and reasoning: what is sound, what concerns you, and what to confirm before they commit. Be fair and direct.` : `They are LEARNING. Leave "yourChoice" as null.`}
 If they skipped clarifying questions, fill "covering" with if-then guidance for the main possibilities (for example "If your room is small (under 10 feet of viewing distance), then..."). If they skipped nothing, "covering" can be empty.
 "mattersMost" weights are 1-10 for how much each factor should drive THIS buyer's decision (10 = deal-breaker level).
 "types" compares the main kinds or approaches (never brands). Use short cells.
 "path" is a decision flowchart: 4-6 yes/no checkpoints in order, each with what to do if the answer is no.
-"searches" teaches smarter Google searching: write 4 ready-to-use Google searches for THIS topic that a buyer could paste in, each using one or two operators that still work on Google today: "exact phrase" in quotes, a minus sign to exclude a word (for example -sponsored or -deal), OR in capital letters, site: (for example site:.gov or site:reddit.com for real owner discussions), filetype:pdf (for official guides or spec sheets), intitle:, before: or after:. Never use + or ~, they no longer work. Never put a brand or company name in a search. Explain each in one plain sentence that teaches the trick.
+${decided ? "" : `They are LEARNING, so leave "prices" as an empty list and "priceNote" empty: price ranges are shown only if they ask. Still fill "costs" (what kinds of costs to expect, without dollar figures) and "lifespan".`}
 "verify" lists how to check out the seller or provider (licenses, credentials, insurance, complaint records, official lookups by name); for simple products it can cover return policies, warranties and recall checks instead.
 Reply with ONLY this JSON inside <json></json>:
 {"ok": true,
@@ -122,10 +123,10 @@ Reply with ONLY this JSON inside <json></json>:
  "types": [{"name": "type or approach", "bestFor": "who it fits", "strengths": "short", "watchOut": "short", "cost": "$ | $$ | $$$ | $$$$"}],
  "mattersMost": [{"factor": "short factor name", "weight": 8, "why": "1-2 sentences"}],
  "hype": [{"claim": "what the ad or salesperson says", "reality": "what it really means"}],
- "prices": [{"tier": "Budget | Mid-range | Premium (or similar)", "range": "typical range, e.g. $600 to $1,200", "get": "what that money usually gets you"}],
+ "prices": [{"tier": "a 1-3 word label only, e.g. Budget, Mid-range, Premium", "range": "the typical range only, short, e.g. $600 to $1,200 or $4.50 to $9 per sq ft", "get": "what that money usually gets you, including the type or material"}],
  "priceNote": "1 sentence: when and where these ranges come from, and that they vary",
  "costs": {"upfront": ["what you pay at the start"], "ongoing": ["what you keep paying"], "hidden": ["costs people forget"]},
- "lifespan": {"years": "typical useful life, e.g. 7 to 10 years, or empty if it doesn't apply", "note": "one sentence on what shortens or extends it"},
+ "lifespan": {"years": "typical useful life in one short phrase, e.g. 7 to 10 years; if it differs by type, keep it brief, e.g. 15 to 30 years depending on type", "note": "one sentence on what shortens or extends it"},
  "questions": ["questions to ask the seller, salesperson or provider"],
  "redFlags": ["warning signs to walk away from"],
  "verify": ["how to check them out, naming official public lookups where they exist"],
@@ -135,7 +136,6 @@ Reply with ONLY this JSON inside <json></json>:
  "covering": [{"if": "if this is your situation", "then": "then do or look for this"}],
  "path": [{"q": "a yes/no checkpoint question", "no": "what to do if the answer is no"}],
  "deeper": [{"heading": "short heading", "text": "section text"}],
- "searches": [{"query": "the Google search exactly as typed", "teaches": "one sentence explaining what this search does and the trick it uses"}],
  "followups": ["4 short follow-up questions a buyer might ask next"],
  "wiki": "the exact English Wikipedia article title that best pictures the item or service, e.g. 'Sofa bed', 'Customer relationship management', 'Roofer'",
  ${sourcesShape}}`;
@@ -161,6 +161,15 @@ Reply with ONLY this JSON inside <json></json>:
  "reasons": ["3-4 reasons for the verdict"],
  "conditions": ["things to check or settle first (for conditions or stepback); empty for confirmed"],
  "finalWord": "2-3 sentences from Mr. Paul, warm and direct, on the buyer's side"}`;
+  }
+
+  if (mode === "prices") {
+    return `${ctx(b)}
+Guide title: "${String(b.title || "").slice(0, 160)}"
+The visitor wants general price estimates. Research current typical price ranges with web search, using independent sources (government, trade associations, established publications and cost guides), not seller pages or lead-generation marketplaces.
+Give 3 or 4 tiers, never brands. Keep "tier" to a 1-3 word label, "range" short, and put the type or material in "get". Say plainly in "priceNote" when the ranges come from, that sources disagree if they do, and that prices vary by region, size and over time. Add 2-4 short "drivers": what pushes the price up or down.
+Reply with ONLY this JSON inside <json></json>:
+{"prices": [{"tier": "Budget", "range": "$600 to $1,200", "get": "what that money usually gets you"}], "priceNote": "one sentence", "drivers": ["what moves the price"], ${sourcesShape}}`;
   }
 
   if (mode === "ask") {
@@ -231,9 +240,9 @@ function verifySources(list, retrieved) {
       r = best;
     }
     if (!r || !isStrong(r.url) || /[?&]comment/i.test(r.url)) continue;
-    const n = normUrl(r.url);
-    if (seen.has(n)) continue;
-    seen.add(n);
+    const n = normUrl(r.url), t = hostOf(r.url).replace(/^www\./, "") + "|" + String(r.title || s.title || "").toLowerCase().trim();
+    if (seen.has(n) || seen.has(t)) continue;
+    seen.add(n); seen.add(t);
     out.push({ title: String(r.title || s.title || r.url).slice(0, 200), url: r.url });
   }
   return out.slice(0, 8);
@@ -256,10 +265,6 @@ const clip = (s, n) => cleanText(s).slice(0, n);
 const clipList = (a, n, len) => (Array.isArray(a) ? a : []).slice(0, n).map(x => clip(x, len)).filter(Boolean);
 const oneOf = (v, list, d) => (list.includes(v) ? v : d);
 
-// Google search clean-up: drop operators that no longer work (+word, ~word) and keep it one line
-function cleanSearch(q) {
-  return clip(q, 200).replace(/(^|\s)[+~](?=\S)/g, "$1").replace(/\s{2,}/g, " ").trim();
-}
 function cleanPanel(a) {
   const seen = new Set();
   return (Array.isArray(a) ? a : []).slice(0, 4).map((p, i) => ({
@@ -366,7 +371,7 @@ module.exports = async (req, res) => {
     }
 
     // ---- researched modes
-    const searches = mode === "report" ? (b.style === "extended" ? 7 : 5) : 2;
+    const searches = mode === "report" ? (b.style === "extended" ? 7 : (b.stage === "decided" ? 5 : 4)) : mode === "prices" ? 3 : 2;
     const { text, retrieved } = await callClaude(prompt, searches, mode === "report" ? (b.style === "extended" ? 16000 : 11000) : 3000);
     const j = extractJson(text) || {};
     const sources = verifySources(j.sources, retrieved);
@@ -381,21 +386,25 @@ module.exports = async (req, res) => {
       return res.status(200).json({
         ok: true, title: clip(j.title, 140), quickTake: clip(j.quickTake, 1600), whatItIs: clip(j.whatItIs, 1200),
         types: (Array.isArray(j.types) ? j.types : []).slice(0, 6).map(t => ({ name: clip(t && t.name, 80), bestFor: clip(t && t.bestFor, 200), strengths: clip(t && t.strengths, 200), watchOut: clip(t && t.watchOut, 200), cost: (String(t && t.cost || "").match(/^\${1,4}$/) || [""])[0] })).filter(t => t.name),
-        mattersMost: (Array.isArray(j.mattersMost) ? j.mattersMost : []).slice(0, 10).map(m => ({ factor: clip(m && m.factor, 60), weight: Math.max(1, Math.min(10, Math.round(Number(m && m.weight) || 5))), why: clip(m && m.why, 400) })).filter(m => m.factor).sort((a, b2) => b2.weight - a.weight),
+        mattersMost: (Array.isArray(j.mattersMost) ? j.mattersMost : []).slice(0, 10).map(m => ({ factor: clip(m && m.factor, 90), weight: Math.max(1, Math.min(10, Math.round(Number(m && m.weight) || 5))), why: clip(m && m.why, 400) })).filter(m => m.factor).sort((a, b2) => b2.weight - a.weight),
         hype: (Array.isArray(j.hype) ? j.hype : []).slice(0, 8).map(h => ({ claim: clip(h && h.claim, 200), reality: clip(h && h.reality, 400) })).filter(h => h.claim && h.reality),
-        prices: (Array.isArray(j.prices) ? j.prices : []).slice(0, 4).map(p => ({ tier: clip(p && p.tier, 40), range: clip(p && p.range, 80), get: clip(p && p.get, 300) })).filter(p => p.tier && p.range),
+        prices: (b.stage === "decided" && Array.isArray(j.prices) ? j.prices : []).slice(0, 4).map(p => ({ tier: clip(p && p.tier, 90), range: clip(p && p.range, 180), get: clip(p && p.get, 400) })).filter(p => p.tier && p.range),
         priceNote: clip(j.priceNote, 300),
         costs: { upfront: clipList(costs.upfront, 6, 200), ongoing: clipList(costs.ongoing, 6, 200), hidden: clipList(costs.hidden, 6, 200) },
-        lifespan: { years: clip(j.lifespan && j.lifespan.years, 60), note: clip(j.lifespan && j.lifespan.note, 300) },
+        lifespan: { years: clip(j.lifespan && j.lifespan.years, 220), note: clip(j.lifespan && j.lifespan.note, 400) },
         questions: clipList(j.questions, 12, 300), redFlags: clipList(j.redFlags, 10, 300), verify: clipList(j.verify, 8, 300),
         timing: clip(j.timing, 700), mistakes: clipList(j.mistakes, 6, 300), yourChoice: b.stage === "decided" ? yc : null,
         covering: (Array.isArray(j.covering) ? j.covering : []).slice(0, 6).map(c => ({ if: clip(c && c.if, 240), then: clip(c && c.then, 400) })).filter(c => c.if && c.then),
         path: (Array.isArray(j.path) ? j.path : []).slice(0, 6).map(p => ({ q: clip(p && p.q, 160), no: clip(p && p.no, 240) })).filter(p => p.q),
         deeper: (Array.isArray(j.deeper) ? j.deeper : []).slice(0, 4).map(d => ({ heading: clip(d && d.heading, 80), text: clip(d && d.text, 1500) })).filter(d => d.text),
-        searches: (Array.isArray(j.searches) ? j.searches : []).slice(0, 5).map(s => ({ query: cleanSearch(s && s.query), teaches: clip(s && s.teaches, 300) })).filter(s => s.query),
         followups: clipList(j.followups, 4, 140), wiki: clip(j.wiki, 120),
         sources, sourceNote: sources.length ? "" : NO_SOURCES, adviceNote: b.sensitive ? ADVICE_NOTE : ""
       });
+    }
+    if (mode === "prices") {
+      const prices = (Array.isArray(j.prices) ? j.prices : []).slice(0, 4).map(p => ({ tier: clip(p && p.tier, 90), range: clip(p && p.range, 180), get: clip(p && p.get, 400) })).filter(p => p.tier && p.range);
+      if (!prices.length) return res.status(200).json({ ok: false, message: "Mr. Paul couldn't confirm current price ranges just now. Try again in a minute." });
+      return res.status(200).json({ ok: true, prices, priceNote: clip(j.priceNote, 400), drivers: clipList(j.drivers, 4, 240), sources, sourceNote: sources.length ? "" : NO_SOURCES });
     }
     if (mode === "ask") {
       const textA = clip(j.text, 2400);
