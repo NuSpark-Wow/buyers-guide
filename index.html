@@ -237,6 +237,14 @@ body:not(.working) .ctrl button.stop{opacity:.4;pointer-events:none}
 .nav{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0 4px;position:sticky;top:0;background:var(--paper);padding:8px 0;z-index:5;border-bottom:2px solid #eef1f6}
 .nav button{border:0;background:var(--navy-lt);color:var(--navy);font-weight:800;font-size:13px;padding:5px 11px;border-radius:30px;cursor:pointer}
 .nav button:hover{background:var(--navy);color:#fff}
+.sec h3 .tomenu{margin-left:auto;border:0;background:var(--navy-lt);color:var(--navy);font-weight:800;font-size:12px;padding:3px 10px;border-radius:30px;cursor:pointer;font-family:Nunito,system-ui,sans-serif;text-transform:none;letter-spacing:0;flex:none}
+.sec h3{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.navbottom{margin-top:22px;border-top:2px solid #eef1f6;padding-top:14px}
+.navbottom>b{display:block;color:var(--navy);margin-bottom:8px}
+.navbottom .nbtns,.navbottom .nbctrl{display:flex;gap:6px;flex-wrap:wrap}
+.navbottom .nbtns button{border:0;background:var(--navy-lt);color:var(--navy);font-weight:800;font-size:13px;padding:5px 11px;border-radius:30px;cursor:pointer}
+.navbottom .nbctrl{margin-top:12px}
+.navbottom .nbctrl button{border:2px solid var(--navy);background:#fff;color:var(--navy);font-weight:800;font-size:14px;padding:6px 14px;border-radius:30px;cursor:pointer}
 .sec{margin:24px 0 0;scroll-margin-top:60px}
 .sec>h3{display:flex;align-items:center;gap:10px;font-family:Oswald,Impact,sans-serif;font-weight:700;font-size:22px;letter-spacing:.3px;color:var(--navy);margin:0 0 10px;text-transform:uppercase;border-bottom:3px solid var(--gold);padding-bottom:4px}
 .quick{background:var(--navy);color:#fff;border-radius:16px;padding:16px 18px;font-size:17.5px;font-weight:600}
@@ -626,7 +634,7 @@ function scrollToEl(node){
   } else node.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 function goBack(){ stopAll(); const v = state.stack.pop(); if (v) { state.view = v; paint(v); } }
-function closeView(){ stopAll(); state.stack = []; state.view = homeView(); paint(state.view); setBar("", "home"); }
+function closeView(){ stopAll(); state.stack = []; state.view = homeView(); paint(state.view); setBar("", "home"); scrollToEl(display.closest(".deskwrap")); }
 function goHome(){
   stopAll(); state.stack = []; state.paused = false;
   $("#mainQ").value = ""; $("#leanQ").value = "";
@@ -664,6 +672,7 @@ function startGuide(){
   if (job.stage === "decided" && !job.leaning) say("Tip: tell me what you're leaning toward and why, and the panel can check your reasoning. I'll still build the guide.");
   state.stack = [];
   show(triageView(job), false);
+  scrollToEl(display.closest(".deskwrap"));
 }
 
 function triageView(job){
@@ -741,7 +750,7 @@ function summaryOf(r){
     "Red flags: " + (r.redFlags || []).slice(0, 4).join("; "),
     r.yourChoice ? "Their choice: " + r.yourChoice.summary + " Concerns: " + (r.yourChoice.concerns || []).join("; ") : ""].filter(Boolean).join("\n");
 }
-function sec(id, icon, title, ...kids){ return el("section", { class: "sec", id: "s-" + id }, el("h3", {}, el("span", { "aria-hidden": "true", text: icon }), title), ...kids); }
+function sec(id, icon, title, ...kids){ return el("section", { class: "sec", id: "s-" + id }, el("h3", {}, el("span", { "aria-hidden": "true", text: icon }), title, el("button", { class: "tomenu noprint", type: "button", title: "Back to the section menu", onclick: () => scrollToEl(document.querySelector(".nav")) }, "↑ Menu")), ...kids); }
 function list(items){ return el("ul", { class: "clean" }, (items || []).map(x => el("li", { text: x }))); }
 
 function reportView(job){
@@ -888,6 +897,17 @@ function renderReport(d, job, v){
     el("button", { class: "btn ghost", type: "button", onclick: goHome }, "🆕 New Guide")));
 
   navItems.forEach(([id, label]) => nav.append(el("button", { type: "button", onclick: () => { const t = document.getElementById("s-" + id); if (t) scrollToEl(t); } }, label)));
+
+  // the same menu and controls at the bottom of the guide
+  const navB = el("div", { class: "navbottom noprint" }, el("b", { text: "Jump to a section" }));
+  const navBtns = el("div", { class: "nbtns" });
+  navItems.forEach(([id, label]) => navBtns.append(el("button", { type: "button", onclick: () => { const t = document.getElementById("s-" + id); if (t) scrollToEl(t); } }, label)));
+  navB.append(navBtns, el("div", { class: "nbctrl" },
+    el("button", { type: "button", onclick: () => scrollToEl(display.closest(".deskwrap")) }, "⬆ Top of the Guide"),
+    v.restart ? el("button", { type: "button", onclick: () => { stopAll(); v.restart(); scrollToEl(display.closest(".deskwrap")); } }, "🔄 Restart") : null,
+    el("button", { type: "button", onclick: () => { closeView(); scrollToEl(display.closest(".deskwrap")); } }, "✖ Close"),
+    el("button", { type: "button", onclick: goHome }, "🏠 Back to Start")));
+  d.append(navB);
 }
 
 function renderPanel(pz, job, v){
@@ -971,7 +991,7 @@ function askBar(job, v){
     const t = { who: sel.value, q, pending: true };
     job.thread.push(t); ta.value = ""; drawThread();
     api(payload(job, { mode: "ask", to: t.who, q, panel, summary: summaryOf(job.report), history: job.thread.filter(x => x.a).map(x => ({ q: x.q, who: x.who, a: x.a })) }))
-      .then(a => { t.pending = false; t.a = a.text; t.clarify = a.clarify; t.sources = a.sources; drawThread(); })
+      .then(a => { t.pending = false; t.a = a.text; t.clarify = a.clarify; t.sources = a.sources; drawThread(); const last = thread.lastElementChild; if (last) scrollToEl(last); })
       .catch(e => { t.pending = false; t.error = e.message; drawThread(); });
   };
   const chips = (job.report.followups || []).length ? el("div", { class: "chips", style: "margin-bottom:8px" }, job.report.followups.map(f => el("button", { type: "button", onclick: () => { ta.value = f; ta.focus(); } }, f))) : null;
