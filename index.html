@@ -132,8 +132,11 @@ a{color:var(--navy)}
 .banner figure{margin:0;flex:1 1 0;min-width:110px;position:relative;overflow:hidden;background:#1c4a38}
 .banner img{width:100%;height:100%;object-fit:cover;display:block;opacity:0;transition:opacity .6s}
 .banner img.on{opacity:1}
+.banner figure.drawn{background:#16402f}
+.banner figure.drawn svg{width:100%;height:100%;display:block}
+.banner figure.emoji{display:flex;align-items:center;justify-content:center;font-size:44px;background:linear-gradient(135deg,#1c4a38,#123f2f)}
 .banner figcaption{position:absolute;left:0;right:0;bottom:0;padding:4px 8px;font-size:12px;font-weight:800;color:#fff;background:linear-gradient(transparent,rgba(0,0,0,.65))}
-@media(max-width:700px){.banner{height:96px}.banner figure:nth-child(n+5){display:none}}
+@media(max-width:700px){.banner{height:100px}.banner figure{min-width:0}.banner figure:nth-child(n+5){display:none}.banner figcaption{font-size:10.5px;padding:3px 5px}}
 
 main{max-width:1100px;margin:0 auto;padding:18px 14px 0}
 
@@ -215,6 +218,11 @@ body:not(.working) .ctrl button.stop{opacity:.4;pointer-events:none}
 .chips button.on{border-color:var(--navy);background:var(--navy);color:#fff}
 .chips button.skip{border-style:dashed;color:var(--soft)}
 .chips button.skip.on{background:#6b7486;border-color:#6b7486;color:#fff}
+.amtbox{margin-top:10px;max-width:360px}
+.amtbox label{display:block;font-weight:800;margin-bottom:4px}
+.amtbox input{width:100%;font-size:16.5px;padding:9px 12px;border:2px solid #d3dae6;border-radius:12px}
+.amtbox input:focus{outline:none;border-color:var(--navy)}
+.amtbox .hint{margin-top:4px}
 .detbox{margin:12px 0}
 .detbox label{display:block;font-weight:900;margin-bottom:6px}
 .row{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
@@ -440,9 +448,12 @@ footer p{margin:6px 0}
 </footer>
 
 <script>
-// half home, half business: the strip always alternates Home / Business so both show (8 on desktop, 4 on phones)
-const BANNER_HOME = ["Television", "Sofa bed", "Dishwasher", "Mattress", "Refrigerator", "Washing machine", "Lawn mower", "Kitchen"];
-const BANNER_BIZ = ["Data center", "Warehouse", "Forklift", "Point of sale", "Photocopier", "Cubicle", "Office chair", "Laptop"];
+// Banner: 4 home photos, 2 business photos and 2 drawn software screens, alternating (8 on desktop, first 4 on phones)
+const BANNER_HOME = ["Television", "Sofa bed", "Dishwasher", "Mattress", "Refrigerator", "Washing machine", "Lawn mower", "Kitchen", "Microwave oven", "Vacuum cleaner", "Couch", "Air conditioning"];
+const BANNER_BIZ = ["Warehouse", "Forklift", "Point of sale", "Photocopier", "Office chair", "Pallet", "Barcode reader", "Cash register"];
+const SCREEN_SUPPLY = `<svg viewBox="0 0 200 150" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Supply chain software on a screen"><rect width="200" height="150" fill="#16402f"/><rect x="22" y="16" width="156" height="98" rx="6" fill="#0b1f17" stroke="#c87a3e" stroke-width="3"/><rect x="28" y="22" width="144" height="86" rx="2" fill="#f4f7f5"/><rect x="28" y="22" width="144" height="12" fill="#123f2f"/><circle cx="35" cy="28" r="2" fill="#c87a3e"/><text x="42" y="31" font-family="Arial" font-size="7" font-weight="700" fill="#fff">SHIPMENTS</text><path d="M38 90 C 60 50, 80 95, 104 60 S 140 48, 160 70" fill="none" stroke="#2e9a5a" stroke-width="2.5" stroke-dasharray="4 3"/><circle cx="38" cy="90" r="5" fill="#123f2f"/><circle cx="104" cy="60" r="5" fill="#c87a3e"/><circle cx="160" cy="70" r="5" fill="#2e9a5a"/><rect x="34" y="40" width="40" height="6" rx="2" fill="#cfe3d8"/><rect x="34" y="49" width="28" height="5" rx="2" fill="#e7f0eb"/><rect x="120" y="86" width="44" height="16" rx="3" fill="#fff" stroke="#cfe3d8"/><rect x="124" y="91" width="22" height="3" fill="#123f2f"/><rect x="124" y="96" width="34" height="3" fill="#2e9a5a"/><rect x="88" y="114" width="24" height="10" fill="#0b1f17"/><rect x="70" y="124" width="60" height="5" rx="2" fill="#0b1f17"/></svg>`;
+const SCREEN_SALES = `<svg viewBox="0 0 200 150" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Business software dashboard on a laptop"><rect width="200" height="150" fill="#1c4a38"/><rect x="30" y="18" width="140" height="90" rx="6" fill="#0b1f17" stroke="#c87a3e" stroke-width="3"/><rect x="36" y="24" width="128" height="78" rx="2" fill="#f4f7f5"/><rect x="36" y="24" width="26" height="78" fill="#123f2f"/><rect x="41" y="32" width="16" height="4" rx="1" fill="#c87a3e"/><rect x="41" y="42" width="16" height="3" rx="1" fill="#cfe3d8"/><rect x="41" y="50" width="16" height="3" rx="1" fill="#cfe3d8"/><rect x="41" y="58" width="16" height="3" rx="1" fill="#cfe3d8"/><rect x="68" y="30" width="28" height="16" rx="2" fill="#fff" stroke="#cfe3d8"/><rect x="100" y="30" width="28" height="16" rx="2" fill="#fff" stroke="#cfe3d8"/><rect x="132" y="30" width="26" height="16" rx="2" fill="#fff" stroke="#cfe3d8"/><rect x="72" y="35" width="14" height="4" fill="#2e9a5a"/><rect x="104" y="35" width="10" height="4" fill="#c87a3e"/><rect x="136" y="35" width="16" height="4" fill="#123f2f"/><rect x="72" y="80" width="10" height="16" fill="#123f2f"/><rect x="86" y="72" width="10" height="24" fill="#2e9a5a"/><rect x="100" y="64" width="10" height="32" fill="#123f2f"/><rect x="114" y="58" width="10" height="38" fill="#2e9a5a"/><path d="M130 90 L140 78 L148 82 L158 62" fill="none" stroke="#c87a3e" stroke-width="2.5"/><path d="M14 108 H186 L176 122 H24 Z" fill="#0b1f17"/><rect x="86" y="110" width="28" height="4" rx="2" fill="#3a5a4c"/></svg>`;
+const FALLBACK_TILES = { home: [["🛋️", "For your home"], ["📺", "Electronics"], ["🍽️", "Appliances"], ["🏠", "Home projects"]], biz: [["📦", "Supplies & inventory"], ["🏢", "Your workplace"]] };
 const BAR_RIGHT = { home: "Ready", triage: "Setting Up", clarify: "A Few Questions", work: "Researching", report: "Your Guide" };
 const VERDICT = {
   learn:   { confirmed: "Ready to Shop", conditions: "Shop With These Checks", stepback: "Slow Down First" },
@@ -532,17 +543,37 @@ function photoFig(title){
 }
 function buildBanner(){
   const b = $("#banner");
-  const h = shuffle(BANNER_HOME), z = shuffle(BANNER_BIZ), picks = [];
-  for (let i = 0; i < 4; i++) picks.push(h[i], z[i]);
-  picks.forEach(t => {
-    const fig = el("figure", {}); b.append(fig);
-    wikiPhoto(t, 400).then(p => {
-      if (!p) return;
+  const tile = (inner, cap) => { const f = el("figure", { class: "drawn" }); f.innerHTML = inner; if (cap) f.append(el("figcaption", { text: cap })); return f; };
+  const fallback = (icon, cap) => el("figure", { class: "drawn emoji" }, el("span", { "aria-hidden": "true", text: icon }), el("figcaption", { text: cap }));
+  // one combined Wikipedia request for every candidate (no throttling from many separate calls)
+  const all = BANNER_HOME.concat(BANNER_BIZ);
+  const u = "https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*&redirects=1&prop=pageimages&piprop=thumbnail&pithumbsize=400&titles=" + encodeURIComponent(all.join("|"));
+  const lay = (photos) => {
+    const home = shuffle(photos.filter(p => p.side === "home")).slice(0, 4);
+    const biz = shuffle(photos.filter(p => p.side === "biz")).slice(0, 2);
+    const fh = FALLBACK_TILES.home.slice(), fb = FALLBACK_TILES.biz.slice();
+    const photoTile = (p, fbList) => {
+      if (!p) { const x = fbList.shift(); return fallback(x[0], x[1]); }
+      const f = el("figure", {});
       const img = el("img", { src: p.src, alt: "" });
       img.onload = () => img.classList.add("on");
-      fig.append(img, el("figcaption", { text: p.title }));
+      img.onerror = () => { const x = fbList.shift() || ["🛒", "Smart buying"]; f.replaceWith(fallback(x[0], x[1])); };
+      f.append(img, el("figcaption", { text: p.title }));
+      return f;
+    };
+    const screens = shuffle([[SCREEN_SUPPLY, "Supply chain software"], [SCREEN_SALES, "Business software"]]);
+    b.innerHTML = "";
+    b.append(photoTile(home[0], fh), tile(screens[0][0], screens[0][1]), photoTile(home[1], fh), photoTile(biz[0], fb),
+             photoTile(home[2], fh), tile(screens[1][0], screens[1][1]), photoTile(home[3], fh), photoTile(biz[1], fb));
+  };
+  fetch(u).then(r => r.json()).then(j => {
+    const norm = {}; ((j.query && j.query.redirects) || []).concat((j.query && j.query.normalized) || []).forEach(x => norm[x.to] = x.from);
+    const photos = Object.values((j.query && j.query.pages) || {}).filter(pg => pg.thumbnail && !/\.svg/i.test(pg.thumbnail.source)).map(pg => {
+      const asked = norm[pg.title] || pg.title;
+      return { src: pg.thumbnail.source, title: pg.title, side: BANNER_BIZ.includes(asked) || BANNER_BIZ.includes(norm[asked]) ? "biz" : "home" };
     });
-  });
+    lay(photos);
+  }).catch(() => lay([]));
 }
 
 /* ---------- Mr. Paul's speech bubble ---------- */
@@ -650,6 +681,15 @@ function triageView(job){
 function panelCards(panel){
   return el("div", { class: "panelrow" }, (panel || []).map(p => el("div", { class: "pcard" }, el("span", { class: "ic", "aria-hidden": "true", text: p.icon }), el("div", {}, el("b", { text: p.name }), el("small", { text: p.role })))));
 }
+function finalizeAnswers(job){
+  (job.triage.questions || []).forEach((q, i) => {
+    const a = job.answers[i];
+    if (q.kind !== "budget" || !a) return;
+    const base = (a.a || "").replace(/ \(about .*\)$/, "");
+    const amt = (job.budgetAmt || "").trim();
+    a.a = /^(Yes|A rough)/.test(base) && amt ? base + " (about " + amt.replace(/^\$?/, "$") + ")" : base;
+  });
+}
 function clarifyView(job){
   const t = job.triage;
   const v = { restart: () => { job.answers.forEach(a => a.a = ""); job.details = ""; paint(v); }, render(d){
@@ -660,16 +700,25 @@ function clarifyView(job){
       el("p", { class: "sub", text: "Your advisor panel for this decision:" }), panelCards(t.panel));
     t.questions.forEach((q, i) => {
       const chips = el("div", { class: "chips" });
-      const pick = val => { job.answers[i].a = val; chips.querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.v === val)); };
+      let amtBox = null;
+      if (q.kind === "budget") {
+        const inp = el("input", { type: "text", id: "budgetAmt", maxlength: "60", inputmode: "text", autocomplete: "off" });
+        inp.value = job.budgetAmt || "";
+        inp.addEventListener("input", () => job.budgetAmt = inp.value);
+        amtBox = el("div", { class: "amtbox", hidden: !/^(Yes|A rough)/.test(job.answers[i].a || "") ? "" : false },
+          el("label", { for: "budgetAmt", text: "About how much? (optional)" }), inp,
+          el("p", { class: "hint", text: "Type an amount, like 5,000 or 200 a month. Leave it blank if you'd rather not say." }));
+      }
+      const pick = val => { job.answers[i].a = val; chips.querySelectorAll("button").forEach(b => b.classList.toggle("on", b.dataset.v === val)); if (amtBox) amtBox.hidden = !/^(Yes|A rough)/.test(val); };
       q.options.forEach(o => chips.append(el("button", { type: "button", "data-v": o, class: job.answers[i].a === o ? "on" : "", onclick: () => pick(o) }, o)));
-      chips.append(el("button", { type: "button", "data-v": "skip", class: "skip" + (job.answers[i].a === "skip" ? " on" : ""), onclick: () => pick("skip") }, "Not sure / Skip"));
-      d.append(el("div", { class: "cq" }, el("p", { text: q.q }), chips));
+      if (q.kind !== "budget") chips.append(el("button", { type: "button", "data-v": "skip", class: "skip" + (job.answers[i].a === "skip" ? " on" : ""), onclick: () => pick("skip") }, "Not sure / Skip"));
+      d.append(el("div", { class: "cq" }, el("p", { text: q.q }), chips, amtBox));
     });
     const ta = el("textarea", { id: "detQ", maxlength: "700" }); ta.value = job.details;
     ta.addEventListener("input", () => job.details = ta.value);
     d.append(el("div", { class: "detbox" }, el("label", { for: "detQ", text: "Anything else the panel should know? (optional)" }), ta),
       el("div", { class: "row" },
-        el("button", { class: "btn", type: "button", onclick: () => show(reportView(job)) }, "Build My Guide"),
+        el("button", { class: "btn", type: "button", onclick: () => { finalizeAnswers(job); show(reportView(job)); } }, "Build My Guide"),
         el("button", { class: "btn ghost", type: "button", onclick: () => { job.answers.forEach(a => a.a = "skip"); show(reportView(job)); } }, "Skip the Questions")));
   }};
   return v;
