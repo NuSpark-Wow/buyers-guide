@@ -100,7 +100,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>The Buyer's Guide | Learn...Wow! | NuSparkLearnWow</title>
-<meta name="description" content="Know what to look for before you buy or hire anything, for your home or your business. Unbiased: no brands, no sponsors. An advisor panel challenges your choice and Mr. Paul gives the verdict.">
+<meta name="description" content="Know what to look for before you buy or hire anything, for your home or your business. Unbiased: no brands, no sponsors. An advisor panel weighs the positives and concerns, and Mr. Paul gives the verdict.">
 <meta property="og:title" content="The Buyer's Guide | Wow...Who Knew?">
 <meta property="og:description" content="Unbiased buying education for anything you buy or hire. No brands, no sponsors. From NuSparkLearnWow.com.">
 <meta property="og:type" content="website">
@@ -316,6 +316,13 @@ table.cmp tr:nth-child(even) td{background:#f8fafd}
 .adv .who .pill{margin-left:auto;font-size:12px;font-weight:900;letter-spacing:1px;text-transform:uppercase;border-radius:30px;padding:3px 10px;white-space:nowrap}
 .pill.p-2,.pill.p-1{background:var(--red-lt);color:var(--red)} .pill.p0{background:var(--amber-lt);color:var(--amber)} .pill.p1,.pill.p2{background:var(--green-lt);color:var(--green)}
 .adv .hl{font-weight:900;font-size:16.5px;margin:0 0 4px}
+.adv .pc{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:6px 0 8px}
+.adv .pc>div{border-radius:10px;padding:8px 10px;font-size:14.5px}
+.adv .pc .pos{background:var(--green-lt)}
+.adv .pc .con{background:var(--amber-lt)}
+.adv .pc b{display:block;font-size:13px;margin-bottom:2px}
+.adv .pc ul{margin:0;padding-left:18px}
+@media(max-width:600px){.adv .pc{grid-template-columns:1fr}}
 .adv .askq{margin-top:8px;font-style:italic;font-weight:800;color:#8f5226}
 .scale{background:#fff;border-radius:14px;padding:14px 16px 10px;margin:12px 0}
 .scale .axis{position:relative;height:96px;margin:6px 34px 0}
@@ -639,10 +646,10 @@ function homeView(){
       el("div", { class: "steps3" },
         el("div", {}, el("b", {}, el("span", { text: "1" }), "Tell us what it is"), el("p", { text: "Type anything above. Pick Home or Business, and whether you're learning or you've already decided." })),
         el("div", {}, el("b", {}, el("span", { text: "2" }), "Answer, or skip"), el("p", { text: "A few quick questions sharpen the guide. Not sure? Skip any of them and the guide covers every case." })),
-        el("div", {}, el("b", {}, el("span", { text: "3" }), "Get the guide and the verdict"), el("p", { text: "A detailed, source-checked guide, then an advisor panel challenges it and Mr. Paul gives the verdict." }))),
+        el("div", {}, el("b", {}, el("span", { text: "3" }), "Get the guide and the verdict"), el("p", { text: "A detailed, source-checked guide, then an advisor panel weighs the positives and concerns, and Mr. Paul gives the verdict." }))),
       el("div", { class: "diff" },
         el("div", {}, el("b", { text: "🚫 No brands, no sponsors. " }), "We teach you how to judge any brand or provider yourself."),
-        el("div", {}, el("b", { text: "🧑‍⚖️ A panel picked for your decision. " }), "A decorator for a sofa, a CFO for accounting software, and a skeptic every time."),
+        el("div", {}, el("b", { text: "🧑‍⚖️ A panel picked for your decision. " }), "A decorator for a sofa, a CFO for accounting software, each giving the positives and the concerns."),
         el("div", {}, el("b", { text: "✅ Confirm or step back. " }), "Already decided? The panel checks your reasoning, and Mr. Paul tells you straight."),
         el("div", {}, el("b", { text: "💵 Prices when you want them. " }), "Learning? Tap for typical price ranges. Decided? They're built into your guide."))));
   }};
@@ -887,14 +894,14 @@ function renderPanel(pz, job, v){
   const panel = (job.triage && job.triage.panel) || [];
   const decided = job.stage === "decided";
   pz.append(el("h3", { text: "🧑‍⚖️ The Advisor Panel" }),
-    el("p", { class: "sub", text: decided ? "Your panel challenges your choice from every angle. Then Mr. Paul gives the verdict." : "Your panel challenges the plan and the usual buyer assumptions. Then Mr. Paul gives the verdict." }));
+    el("p", { class: "sub", text: decided ? "Your panel gives a balanced look at your choice: the positives and the concerns. Then Mr. Paul gives the verdict." : "Your panel gives a balanced look at the plan: the positives and the concerns. Then Mr. Paul gives the verdict." }));
   if (!job.panel) {
     pz.append(panelCards(panel));
     if (state.paused) { pz.append(el("div", { class: "paused" }, "⏸ The panel is paused while you read. Tap ", el("b", { text: "▶ Resume" }), " in the controls when you're ready.")); return; }
     const box = el("div", {}); pz.append(box);
     if (job.panelPending) { box.append(loadingEl("The panel is still talking it over...")); return; }
-    box.append(loadingEl("The panel is reviewing the guide...", ["The skeptic is reading the fine print...", "Weighing the money side...", "Mr. Paul is writing the verdict..."]));
-    say("The guide's ready. Now the panel's going to push back. That's where the good stuff is.");
+    box.append(loadingEl("The panel is reviewing the guide...", ["Checking the fine print...", "Weighing the money side...", "Mr. Paul is writing the verdict..."]));
+    say("The guide's ready. Now the panel weighs in, the good and the not-so-good.");
     job.panelPending = api(payload(job, { mode: "panel", panel, summary: summaryOf(job.report) })).then(p => {
       job.panelPending = null;
       if (!p.ok) throw new Error(p.message || "The panel couldn't meet. Try again.");
@@ -915,8 +922,11 @@ function panelResult(job){
   wrap.append(...p.advisors.map(a => el("div", { class: "adv s" + a.stance },
     el("div", { class: "who" }, el("span", { class: "ic", "aria-hidden": "true", text: iconOf(a.name) }), el("div", {}, el("b", { text: a.name }), el("small", { text: (panel.find(x => x.name === a.name) || {}).role || "" })), el("span", { class: "pill p" + a.stance, text: STANCE[String(a.stance)] })),
     a.headline ? el("p", { class: "hl", text: a.headline }) : null,
+    (a.positives && a.positives.length) || (a.concerns && a.concerns.length) ? el("div", { class: "pc" },
+      el("div", { class: "pos" }, el("b", { text: "👍 Positives" }), list(a.positives || [])),
+      el("div", { class: "con" }, el("b", { text: "⚠️ Concerns" }), list(a.concerns || []))) : null,
     el("p", { style: "margin:0", text: a.argument }),
-    a.question ? el("div", { class: "askq", text: "Ask yourself: " + a.question }) : null)));
+    a.question ? el("div", { class: "askq", text: "Something to think about: " + a.question }) : null)));
   // where the panel stands (chart)
   const axis = el("div", { class: "axis" });
   const groups = {};
@@ -995,7 +1005,7 @@ function plainText(job){
   if (job.panel) {
     const p = job.panel;
     out.push("", "THE ADVISOR PANEL");
-    p.advisors.forEach(a => out.push("- " + a.name + " (" + STANCE[String(a.stance)] + "): " + a.headline + " " + a.argument + (a.question ? " Ask yourself: " + a.question : "")));
+    p.advisors.forEach(a => out.push("- " + a.name + " (" + STANCE[String(a.stance)] + "): " + a.headline + ((a.positives || []).length ? " Positives: " + a.positives.join("; ") + "." : "") + ((a.concerns || []).length ? " Concerns: " + a.concerns.join("; ") + "." : "") + " " + a.argument + (a.question ? " Something to think about: " + a.question : "")));
     out.push("", "VERDICT: " + VERDICT[job.stage === "decided" ? "decided" : "learn"][p.verdict].toUpperCase() + " (" + (p.verdictTitle || "") + ")");
     p.reasons.forEach(x => out.push("- " + x)); L("Check first", p.conditions); if (p.finalWord) out.push("Mr. Paul: " + p.finalWord);
   }
@@ -1012,6 +1022,20 @@ $("#mainGo").addEventListener("click", startGuide);
 $("#mainQ").addEventListener("keydown", e => { if (e.key === "Enter") startGuide(); });
 buildBanner();
 state.view = homeView(); paint(state.view);
+
+/* tell the website page how tall the tool is, so there is no inner scroll bar */
+(function(){
+  if (window.parent === window) return;
+  let last = 0;
+  const send = () => {
+    const h = Math.ceil(document.body.getBoundingClientRect().height) + 20;
+    if (Math.abs(h - last) > 4) { last = h; try { window.parent.postMessage({ lwToolHeight: h }, "*"); } catch(e){} }
+  };
+  if (window.ResizeObserver) new ResizeObserver(send).observe(document.body);
+  window.addEventListener("load", send);
+  setInterval(send, 1500);
+  send();
+})();
 </script>
 </body>
 </html>
