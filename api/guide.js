@@ -86,9 +86,9 @@ function modePrompt(mode, b) {
     return `${ctx(b)}
 Set up this Buyer's Guide. Do not research or answer it yet.
 1. Decide if it is on topic (buying, leasing, subscribing to or hiring something). If not, or if it is weapons, drugs or anything illegal, set onTopic false.
-2. Give it a short, clear title, like "Buying a Sofa Bed" or "Hiring a Financial Advisor" or "Choosing a CRM for a Small Team".
+2. Give it a short, clear title, like "Buying a Sofa Bed" or "Hiring a Financial Advisor" or "Choosing a CRM". Never add details the visitor didn't state: no assumed size, budget, location or situation (do not write "for a Small Business" unless they said so).
 3. Pick the ADVISOR PANEL: 3 or 4 advisors who would really sit at the table for THIS decision, each bringing a different angle. Mix one deep specialist (for example a home theater installer, a roofing inspector, an ERP implementation consultant, a fee-only planner), one money voice (for example a household budget coach, a fractional CFO), one hands-on voice (for example an interior decorator, an operations manager, a long-time owner), and one skeptic who pushes back on everything (for example a consumer protection investigator, a procurement officer). Give each a friendly role title only, never a personal name. Each gets one emoji icon.
-4. Write CLARIFYING QUESTIONS that would change the advice: at most 4, each short, with 2-5 tap options. Visitors can skip any of them and the guide still runs, so ask only what truly matters (for example room size and viewing distance for a TV; team size and current tools for a CRM; roof age and material for a roofer). ${b.stage === "decided" ? "They have a choice in mind, so ask what would most help judge it (budget, how long they plan to keep it, must-haves, timeline)." : ""} Never ask for personal information like names, addresses or account numbers.
+4. Write CLARIFYING QUESTIONS that would change the advice: at most ${b.side === "business" ? 2 : 3}, each short, with 2-5 tap options. Do NOT ask about budget or price range, and do NOT ask about company size, team size or number of employees: the tool asks those itself. Visitors can skip any of them and the guide still runs, so ask only what truly matters (for example room size and viewing distance for a TV; team size and current tools for a CRM; roof age and material for a roofer). ${b.stage === "decided" ? "They have a choice in mind, so ask what would most help judge it (budget, how long they plan to keep it, must-haves, timeline)." : ""} Never ask for personal information like names, addresses or account numbers.
 Reply with ONLY this JSON inside <json></json>:
 {"onTopic": true,
  "message": "if onTopic is false, one kind sentence explaining and pointing to The Answer Man for general questions; otherwise empty",
@@ -109,6 +109,7 @@ Set "sensitive" to true for legal, financial, insurance, investment, tax or heal
 ${style}
 Research this purchase with web search (several searches: what experts and independent testers say matters, ${decided ? "current typical price ranges, " : ""}common problems and complaints, and how to verify a seller or provider when it applies). Then write the Buyer's Guide.
 ${decided ? `They are DECIDED OR CLOSE. Fill "yourChoice" with an honest second look at their choice and reasoning: what is sound, what concerns you, and what to confirm before they commit. Be fair and direct.` : `They are LEARNING. Leave "yourChoice" as null.`}
+If they have no idea of a budget yet, that is normal: help them form one by explaining what drives the cost, and never scold them for not knowing. If they gave a budget, judge their options against it honestly.
 If they skipped clarifying questions, fill "covering" with if-then guidance for the main possibilities (for example "If your room is small (under 10 feet of viewing distance), then..."). If they skipped nothing, "covering" can be empty.
 "mattersMost" weights are 1-10 for how much each factor should drive THIS buyer's decision (10 = deal-breaker level).
 "types" compares the main kinds or approaches (never brands). Use short cells.
@@ -269,7 +270,7 @@ function cleanPanel(a) {
   const seen = new Set();
   return (Array.isArray(a) ? a : []).slice(0, 4).map((p, i) => ({
     name: clip(p && p.name, 50), role: clip(p && p.role, 120), lens: clip(p && p.lens, 200),
-    icon: (String(p && p.icon || "").trim().slice(0, 4)) || ICONS[i % ICONS.length]
+    icon: ((String(p && p.icon || "").trim().slice(0, 4)) || ICONS[i % ICONS.length]).replace(/💷|💶|💴|£|€|¥/g, "💵")
   })).filter(p => p.name && !seen.has(p.name.toLowerCase()) && seen.add(p.name.toLowerCase()));
 }
 
@@ -349,9 +350,14 @@ module.exports = async (req, res) => {
       ]).filter(p => !panel.some(x => x.name.toLowerCase() === p.name.toLowerCase()))).slice(0, 4);
       const questions = (Array.isArray(j.questions) ? j.questions : []).slice(0, 4)
         .map(q => ({ q: clip(q && q.q, 160), options: clipList(q && q.options, 5, 60) })).filter(q => q.q && q.options.length >= 2);
+      const aiQs = questions.filter(q => !/budget|price range|spend|how much.*(pay|cost)|employees|team size|company size|how (big|large) is your|how many (people|users|employees|staff|seats)/i.test(q.q)).slice(0, b.side === "business" ? 2 : 3);
+      const fixed = [];
+      if (b.side === "business") fixed.push({ q: "How big is your company or team?", options: ["Just me", "2 to 10", "11 to 50", "50+"], kind: "size" });
+      fixed.push(...aiQs);
+      fixed.push({ q: "Do you have a budget in mind?", options: ["Yes, a set budget", "A rough idea", "No idea yet"], kind: "budget" });
       return res.status(200).json({
         onTopic: true, title: clip(j.title, 90) || clip(b.question, 90), kind: oneOf(j.kind, ["product", "software", "service"], "product"),
-        sensitive: j.sensitive === true, panel, questions
+        sensitive: j.sensitive === true, panel, questions: fixed
       });
     }
 
