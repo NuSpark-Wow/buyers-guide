@@ -403,6 +403,12 @@ footer p{margin:6px 0}
   .sec,.adv,.card,.verdict{break-inside:avoid}
   .fill{transition:none}
 }
+
+/* key points first, Show more for everything */
+@media screen{ .fold:not(.open) .xtra{display:none !important} }
+.morebtn{display:block;margin:10px 0 0;border:2px solid var(--navy);background:#fff;color:var(--navy);font-weight:800;font-size:14px;padding:6px 14px;border-radius:30px;cursor:pointer;font-family:Nunito,system-ui,sans-serif}
+.morebtn:hover{background:var(--navy-lt)}
+.allbtn{background:var(--navy) !important;color:#fff !important;border-color:var(--navy) !important}
 </style>
 </head>
 <body>
@@ -751,7 +757,27 @@ function summaryOf(r){
     r.yourChoice ? "Their choice: " + r.yourChoice.summary + " Concerns: " + (r.yourChoice.concerns || []).join("; ") : ""].filter(Boolean).join("\n");
 }
 function sec(id, icon, title, ...kids){ return el("section", { class: "sec", id: "s-" + id }, el("h3", {}, el("span", { "aria-hidden": "true", text: icon }), title, el("button", { class: "tomenu noprint", type: "button", title: "Back to the section menu", onclick: () => scrollToEl(document.querySelector(".nav")) }, "↑ Menu")), ...kids); }
-function list(items){ return el("ul", { class: "clean" }, (items || []).map(x => el("li", { text: x }))); }
+function list(items, k){ return el("ul", { class: "clean" }, (items || []).map((x, i) => el("li", { class: k != null && i >= k ? "xtra" : "", text: x }))); }
+// key points first: the first sentences show, the rest opens with "Show more"
+function textK(t, n){
+  const parts = String(t || "").split(/(?<=[.!?])\s+/), head = parts.slice(0, n).join(" "), rest = parts.slice(n).join(" ");
+  return [head, rest ? el("span", { class: "xtra", text: " " + rest }) : null];
+}
+// a section shows its key points; "Show more" opens everything (nothing is ever left out)
+function fold(node){
+  if (!node || !node.querySelector(".xtra")) return node;
+  node.classList.add("fold"); if (state.allOpen) node.classList.add("open");
+  const btn = el("button", { class: "morebtn noprint", type: "button" });
+  const paintBtn = () => { btn.textContent = node.classList.contains("open") ? "Show less ▴" : "Show more ▾"; };
+  btn.onclick = () => { node.classList.toggle("open"); paintBtn(); };
+  node._paintBtn = paintBtn; paintBtn(); node.append(btn);
+  return node;
+}
+function setAllOpen(open){
+  state.allOpen = open;
+  document.querySelectorAll(".fold").forEach(n => { n.classList.toggle("open", open); if (n._paintBtn) n._paintBtn(); });
+  document.querySelectorAll(".allbtn").forEach(b => b.textContent = open ? "Show key points only ▴" : "Expand all sections ▾");
+}
 
 function reportView(job){
   const v = { restart: () => { job.report = null; job.panel = null; job.priceData = null; job.thread = []; job.style = "full"; paint(v); }, render(d){
@@ -780,7 +806,8 @@ function renderReport(d, job, v){
   const head = el("div", { class: "rhead" },
     el("div", { class: "txt" }, el("div", { class: "h2", text: r.title || job.triage.title }),
       el("div", { class: "badges" }, el("span", { class: "badge", text: job.side === "business" ? "💼 For Business" : "🏠 For Home" }), el("span", { class: "badge", text: decided ? "✅ Second Look" : "📚 Buyer's Education" }), job.style === "extended" ? el("span", { class: "badge gold", text: "Double Length" }) : null),
-      el("div", { class: "quick" }, el("b", { text: "Mr. Paul's Quick Take" }), r.quickTake)),
+      el("div", { class: "quick" }, el("b", { text: "Mr. Paul's Quick Take" }), r.quickTake),
+      el("p", { class: "note noprint", style: "margin:6px 0 0", text: "Each section shows the key points first. Tap Show more on any section for everything, or Expand all sections in the menu." })),
     r.wiki ? photoFig(r.wiki) : null);
   d.append(head);
 
@@ -788,26 +815,26 @@ function renderReport(d, job, v){
   const navItems = [];
   const nav = el("div", { class: "nav noprint" });
   d.append(nav);
-  const add = (id, label, node) => { if (!node) return; navItems.push([id, label]); d.append(node); };
+  const add = (id, label, node) => { if (!node) return; navItems.push([id, label]); d.append(fold(node)); };
 
   if (r.yourChoice) add("choice", "Your Choice", sec("choice", "🎯", "A Second Look at Your Choice", el("div", { class: "yc" },
     el("p", { style: "margin:0;font-weight:700", text: r.yourChoice.summary }),
-    r.yourChoice.sound.length ? [el("h4", { text: "✅ What's solid" }), list(r.yourChoice.sound)] : null,
-    r.yourChoice.concerns.length ? [el("h4", { text: "⚠️ What concerns us" }), list(r.yourChoice.concerns)] : null,
-    r.yourChoice.confirm.length ? [el("h4", { text: "🔍 Confirm before you commit" }), list(r.yourChoice.confirm)] : null)));
+    r.yourChoice.sound.length ? [el("h4", { text: "✅ What's solid" }), list(r.yourChoice.sound, 1)] : null,
+    r.yourChoice.concerns.length ? [el("h4", { text: "⚠️ What concerns us" }), list(r.yourChoice.concerns, 2)] : null,
+    r.yourChoice.confirm.length ? [el("h4", { text: "🔍 Confirm before you commit" }), list(r.yourChoice.confirm, 2)] : null)));
 
-  if (r.whatItIs) add("basics", "The Basics", sec("basics", "📘", "The Basics", el("p", { style: "margin:0;font-size:16.5px", text: r.whatItIs })));
+  if (r.whatItIs) add("basics", "The Basics", sec("basics", "📘", "The Basics", el("p", { style: "margin:0;font-size:16.5px" }, textK(r.whatItIs, 2))));
 
   if (r.types.length) add("types", "Types", sec("types", "🗂️", "The Main Types, Side by Side",
     el("div", { class: "tblwrap" }, el("table", { class: "cmp" },
-      el("thead", {}, el("tr", {}, ["Type", "Best for", "Strengths", "Watch out", "Cost"].map(h => el("th", { text: h })))),
-      el("tbody", {}, r.types.map(t => el("tr", {}, el("td", { text: t.name }), el("td", { text: t.bestFor }), el("td", { text: t.strengths }), el("td", { text: t.watchOut }), el("td", { class: "cost", text: t.cost || "—" })))))),
+      el("thead", {}, el("tr", {}, [["Type"], ["Best for"], ["Strengths", "xtra"], ["Watch out", "xtra"], ["Cost"]].map(h => el("th", { class: h[1] || "", text: h[0] })))),
+      el("tbody", {}, r.types.map((t, i) => el("tr", { class: i >= 4 ? "xtra" : "" }, el("td", { text: t.name }), el("td", { text: t.bestFor }), el("td", { class: "xtra", text: t.strengths }), el("td", { class: "xtra", text: t.watchOut }), el("td", { class: "cost", text: t.cost || "—" })))))),
     el("p", { class: "note", text: "Cost is relative: $ is the least expensive type, $$$$ the most." })));
 
   if (r.mattersMost.length) {
-    const bars = el("div", { class: "bars" }, r.mattersMost.map(m => {
+    const bars = el("div", { class: "bars" }, r.mattersMost.slice().sort((a, b) => b.weight - a.weight).map((m, i) => {
       const fill = el("div", { class: "fill" + (m.weight >= 8 ? "" : m.weight >= 5 ? " w2" : " w3"), "data-w": m.weight * 10 });
-      return el("div", { class: "barrow" }, el("div", { class: "lab" }, m.factor, el("span", { text: m.weight + " / 10" })), el("div", { class: "track" }, fill), el("p", { text: m.why }));
+      return el("div", { class: "barrow" + (i >= 4 ? " xtra" : "") }, el("div", { class: "lab" }, m.factor, el("span", { text: m.weight + " / 10" })), el("div", { class: "track" }, fill), el("p", { text: m.why }));
     }));
     add("matters", "What Matters", sec("matters", "📊", "What Matters Most for You", bars, el("p", { class: "note", text: "Weights are Mr. Paul's guidance for your situation, based on the research. They're not lab scores." })));
     requestAnimationFrame(() => setTimeout(() => bars.querySelectorAll(".fill").forEach(f => f.style.width = f.dataset.w + "%"), 60));
@@ -815,10 +842,10 @@ function renderReport(d, job, v){
 
   if (r.covering.length) add("covering", "Covering Your Bases", sec("covering", "🧭", "Covering Your Bases",
     el("p", { class: "sub", text: "You skipped a question or two, so here's what to do in each case." }),
-    r.covering.map(c => el("div", { class: "ifthen" }, el("div", { text: "If " + c.if.replace(/^if\s+/i, "") }), el("div", { text: c.then.replace(/^then\s+/i, "") })))));
+    r.covering.map((c, i) => el("div", { class: "ifthen" + (i >= 2 ? " xtra" : "") }, el("div", { text: "If " + c.if.replace(/^if\s+/i, "") }), el("div", { text: c.then.replace(/^then\s+/i, "") })))));
 
   if (r.hype.length) add("hype", "Hype vs. Reality", sec("hype", "📣", "Hype vs. Reality",
-    r.hype.map(h => el("div", { class: "hype" }, el("div", { class: "c" }, el("small", { text: "What they say" }), h.claim), el("div", { class: "r" }, el("small", { text: "What it really means" }), h.reality)))));
+    r.hype.map((h, i) => el("div", { class: "hype" + (i >= 2 ? " xtra" : "") }, el("div", { class: "c" }, el("small", { text: "What they say" }), h.claim), el("div", { class: "r" }, el("small", { text: "What it really means" }), h.reality)))));
 
   const decidedMode = job.stage === "decided";
   const ladder = (prices, note, drivers) => [
@@ -852,19 +879,19 @@ function renderReport(d, job, v){
   if (hasCost) add("cost", decidedMode ? "Price & Real Cost" : "The Real Cost", sec("cost", "💵", decidedMode ? "Price and the Real Cost" : "The Real Cost",
     priceZone,
     el("div", { class: "cols3 money", style: "margin-top:12px" },
-      r.costs.upfront.length ? el("div", { class: "card" }, el("h4", { text: "💳 Up front" }), list(r.costs.upfront)) : null,
-      r.costs.ongoing.length ? el("div", { class: "card" }, el("h4", { text: "🔁 Ongoing" }), list(r.costs.ongoing)) : null,
-      r.costs.hidden.length ? el("div", { class: "card" }, el("h4", { text: "🕵️ Hidden costs" }), list(r.costs.hidden)) : null),
+      r.costs.upfront.length ? el("div", { class: "card" }, el("h4", { text: "💳 Up front" }), list(r.costs.upfront, 2)) : null,
+      r.costs.ongoing.length ? el("div", { class: "card" }, el("h4", { text: "🔁 Ongoing" }), list(r.costs.ongoing, 2)) : null,
+      r.costs.hidden.length ? el("div", { class: "card" }, el("h4", { text: "🕵️ Hidden costs" }), list(r.costs.hidden, 2)) : null),
     r.lifespan.years ? el("div", { class: "life" }, el("b", { text: "⏳ Typical lifespan: " + r.lifespan.years }), el("div", { class: "line" }), el("p", { style: "margin:0;font-size:14.5px", text: r.lifespan.note })) : null));
 
   if (r.questions.length || r.redFlags.length) add("ask", "Questions & Red Flags", sec("ask", "🗒️", "Questions to Ask and Red Flags",
     el("div", { class: "cols2" },
-      r.questions.length ? el("div", { class: "card" }, el("h4", { style: "margin:0 0 6px;color:var(--navy)", text: "❓ Ask them" }), list(r.questions)) : null,
-      r.redFlags.length ? el("div", { class: "card", style: "border-color:#f2b8aa" }, el("h4", { style: "margin:0 0 6px;color:var(--red)", text: "🚩 Walk away if..." }), list(r.redFlags)) : null)));
+      r.questions.length ? el("div", { class: "card" }, el("h4", { style: "margin:0 0 6px;color:var(--navy)", text: "❓ Ask them" }), list(r.questions, 4)) : null,
+      r.redFlags.length ? el("div", { class: "card", style: "border-color:#f2b8aa" }, el("h4", { style: "margin:0 0 6px;color:var(--red)", text: "🚩 Walk away if..." }), list(r.redFlags, 4)) : null)));
 
-  if (r.verify.length) add("verify", "Check Them Out", sec("verify", "🛡️", "Check Them Out", list(r.verify)));
-  if (r.timing) add("timing", "Timing", sec("timing", "📅", "When to Buy", el("p", { style: "margin:0", text: r.timing })));
-  if (r.mistakes.length) add("regrets", "Common Regrets", sec("regrets", "😬", "What Buyers Wish They'd Known", list(r.mistakes)));
+  if (r.verify.length) add("verify", "Check Them Out", sec("verify", "🛡️", "Check Them Out", list(r.verify, 2)));
+  if (r.timing) add("timing", "Timing", sec("timing", "📅", "When to Buy", el("p", { style: "margin:0" }, textK(r.timing, 1))));
+  if (r.mistakes.length) add("regrets", "Common Regrets", sec("regrets", "😬", "What Buyers Wish They'd Known", list(r.mistakes, 3)));
 
   if (r.path.length) add("path", "Decision Path", sec("path", "🛤️", "Your Decision Path", el("div", { class: "flow" },
     r.path.map((p, i) => [
@@ -872,7 +899,7 @@ function renderReport(d, job, v){
       el("div", { class: "farrow", text: "↓ Yes" })]).flat(),
     el("div", { class: "fend", text: "✅ You're ready to buy or hire with confidence" }))));
 
-  if (r.deeper.length) add("deeper", "Go Deeper", sec("deeper", "🔬", "Go Deeper", r.deeper.map(x => el("div", { class: "card" }, el("h4", { style: "margin:0 0 4px;color:var(--navy)", text: x.heading }), el("p", { style: "margin:0", text: x.text })))));
+  if (r.deeper.length) add("deeper", "Go Deeper", sec("deeper", "🔬", "Go Deeper", r.deeper.map(x => el("div", { class: "card" }, el("h4", { style: "margin:0 0 4px;color:var(--navy)", text: x.heading }), el("p", { style: "margin:0" }, textK(x.text, 1))))));
 
   // sources + notes
   d.append(el("div", { class: "fn" },
@@ -897,12 +924,14 @@ function renderReport(d, job, v){
     el("button", { class: "btn ghost", type: "button", onclick: goHome }, "🆕 New Guide")));
 
   navItems.forEach(([id, label]) => nav.append(el("button", { type: "button", onclick: () => { const t = document.getElementById("s-" + id); if (t) scrollToEl(t); } }, label)));
+  nav.append(el("button", { type: "button", class: "allbtn", onclick: () => setAllOpen(!state.allOpen) }, state.allOpen ? "Show key points only ▴" : "Expand all sections ▾"));
 
   // the same menu and controls at the bottom of the guide
   const navB = el("div", { class: "navbottom noprint" }, el("b", { text: "Jump to a section" }));
   const navBtns = el("div", { class: "nbtns" });
   navItems.forEach(([id, label]) => navBtns.append(el("button", { type: "button", onclick: () => { const t = document.getElementById("s-" + id); if (t) scrollToEl(t); } }, label)));
   navB.append(navBtns, el("div", { class: "nbctrl" },
+    el("button", { type: "button", class: "allbtn", onclick: () => setAllOpen(!state.allOpen) }, state.allOpen ? "Show key points only ▴" : "Expand all sections ▾"),
     el("button", { type: "button", onclick: () => scrollToEl(display.closest(".deskwrap")) }, "⬆ Top of the Guide"),
     v.restart ? el("button", { type: "button", onclick: () => { stopAll(); v.restart(); scrollToEl(display.closest(".deskwrap")); } }, "🔄 Restart") : null,
     el("button", { type: "button", onclick: () => { closeView(); scrollToEl(display.closest(".deskwrap")); } }, "✖ Close"),
@@ -932,7 +961,10 @@ function renderPanel(pz, job, v){
     }).catch(e => { job.panelPending = null; if (state.view === v) { box.innerHTML = ""; box.append(errEl(e.message, () => repaint())); } });
     return;
   }
-  pz.append(panelResult(job));
+  const res = panelResult(job);
+  const advs = el("div", {}, ...Array.from(res.querySelectorAll(":scope > .adv")));
+  res.prepend(fold(advs));
+  pz.append(res);
 }
 
 function panelResult(job){
@@ -942,10 +974,10 @@ function panelResult(job){
   wrap.append(...p.advisors.map(a => el("div", { class: "adv s" + a.stance },
     el("div", { class: "who" }, el("span", { class: "ic", "aria-hidden": "true", text: iconOf(a.name) }), el("div", {}, el("b", { text: a.name }), el("small", { text: (panel.find(x => x.name === a.name) || {}).role || "" })), el("span", { class: "pill p" + a.stance, text: STANCE[String(a.stance)] })),
     a.headline ? el("p", { class: "hl", text: a.headline }) : null,
-    (a.positives && a.positives.length) || (a.concerns && a.concerns.length) ? el("div", { class: "pc" },
+    (a.positives && a.positives.length) || (a.concerns && a.concerns.length) ? el("div", { class: "pc xtra" },
       el("div", { class: "pos" }, el("b", { text: "👍 Positives" }), list(a.positives || [])),
       el("div", { class: "con" }, el("b", { text: "⚠️ Concerns" }), list(a.concerns || []))) : null,
-    el("p", { style: "margin:0", text: a.argument }),
+    el("p", { class: "xtra", style: "margin:0", text: a.argument }),
     a.question ? el("div", { class: "askq", text: "Something to think about: " + a.question }) : null)));
   // where the panel stands (chart)
   const axis = el("div", { class: "axis" });
