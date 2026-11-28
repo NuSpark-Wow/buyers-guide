@@ -115,6 +115,16 @@ If they skipped clarifying questions, fill "covering" with if-then guidance for 
 "types" compares the main kinds or approaches (never brands). Use short cells.
 "path" is a decision flowchart: 4-6 yes/no checkpoints in order, each with what to do if the answer is no.
 ${decided ? "" : `They are LEARNING, so leave "prices" as an empty list and "priceNote" empty: price ranges are shown only if they ask. Still fill "costs" (what kinds of costs to expect, without dollar figures) and "lifespan".`}
+NO OVERLAP: every section has ONE job, and nothing may appear in two sections (not even reworded). Before you finish, check every item against the other sections and cut or replace any repeat.
+- "hype" = ONLY marketing and sales claims, decoded.
+- "questions" = ONLY what to ask the seller or provider out loud.
+- "verify" = ONLY how to check them out on your own (records, licenses, lookups), never a question to ask them.
+- "redFlags" = ONLY warning signs in how the seller, provider or offer behaves (pressure, missing paperwork, vague answers).
+- "mistakes" = ONLY the buyer's own regrets after buying (wrong size, didn't measure, paid for features never used), never seller behavior.
+- "costs" = kinds of costs; "timing" = when to buy; neither repeats a factor from "mattersMost".
+- "covering" = ONLY if-then guidance for questions they skipped; "path" = ONLY yes/no checkpoints, never restating "covering".
+- "deeper" = ONLY new information that appears nowhere else in the guide.
+FOCUS ON WHAT'S IMPORTANT: put every list in order of importance for THIS buyer, most important first, because the first few items are shown as the key points and the rest sit behind "Show more". Cut filler: an item earns its place only if it would change what this buyer does.
 "verify" lists how to check out the seller or provider (licenses, credentials, insurance, complaint records, official lookups by name); for simple products it can cover return policies, warranties and recall checks instead.
 Reply with ONLY this JSON inside <json></json>:
 {"ok": true,
@@ -149,7 +159,7 @@ Guide title: "${String(b.title || "").slice(0, 160)}"
 Summary of the research so far: ${String(b.summary || "").slice(0, 3000)}
 The advisor panel for this decision:
 ${panelText(b.panel)}
-Each advisor now weighs in on ${decided ? "the visitor's choice and reasoning" : "the visitor's plan to buy this, and the common assumptions buyers make"}, from their own lens and in their own voice. Every advisor stays NEUTRAL and BALANCED: give the genuine positives AND the genuine concerns from their angle, not forced criticism and not empty praise. Their stance follows the evidence, so it is fine if they lean the same way when the facts point that way, or differ when their angles really do lead to different views. They stay unbiased: no brands, no companies, no promotion.
+Each advisor adds what THEIR angle sees that the guide summary above does not already say: no repeating the guide's red flags or factors, and no two advisors making the same point. Each advisor now weighs in on ${decided ? "the visitor's choice and reasoning" : "the visitor's plan to buy this, and the common assumptions buyers make"}, from their own lens and in their own voice. Every advisor stays NEUTRAL and BALANCED: give the genuine positives AND the genuine concerns from their angle, not forced criticism and not empty praise. Their stance follows the evidence, so it is fine if they lean the same way when the facts point that way, or differ when their angles really do lead to different views. They stay unbiased: no brands, no companies, no promotion.
 Then Mr. Paul weighs the panel and gives the verdict.
 ${decided
   ? `Verdict options: "confirmed" (their choice and reasoning hold up), "conditions" (confirmed, but only if they check specific things first), "stepback" (they should pause and rethink, with clear reasons and what to consider instead). Be honest. Do not default to "confirmed" to please them.`
